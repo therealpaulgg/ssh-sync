@@ -131,7 +131,7 @@ type Host struct {
 	Values map[string]string `json:"values"`
 }
 
-func parseSshConfig() ([]*Host, error) {
+func parseSshConfig() ([]Host, error) {
 	// parse the ssh config file and return a list of hosts
 	// the ssh config file is located at ~/.ssh/config
 	user, err := user.Current()
@@ -143,14 +143,14 @@ func parseSshConfig() ([]*Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	var hosts []*Host
+	var hosts []Host
 	scanner := bufio.NewScanner(file)
 	var currentHost *Host
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "Host ") {
 			if currentHost != nil {
-				hosts = append(hosts, currentHost)
+				hosts = append(hosts, *currentHost)
 			}
 			currentHost = &Host{
 				Host:   strings.TrimPrefix(line, "Host "),
@@ -161,7 +161,7 @@ func parseSshConfig() ([]*Host, error) {
 		}
 	}
 	if currentHost != nil {
-		hosts = append(hosts, currentHost)
+		hosts = append(hosts, *currentHost)
 	}
 	return hosts, nil
 }
