@@ -16,9 +16,9 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 
-	"github.com/lestrrat-go/jwx/jwa"
-	"github.com/lestrrat-go/jwx/jwk"
-	"github.com/lestrrat-go/jwx/jwt"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/urfave/cli/v2"
 )
 
@@ -89,7 +89,7 @@ func generateKey() error {
 		return err
 	}
 	defer pubOut.Close()
-	if err := pem.Encode(pubOut, &pem.Block{Type: "EC PUBLIC KEY", Bytes: pubBytes}); err != nil {
+	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
 		return err
 	}
 	privOut, err := os.OpenFile(path.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -189,11 +189,11 @@ func main() {
 					if err != nil {
 						return err
 					}
-					tok, err := jwt.NewBuilder().Issuer("github.com/therealpaulgg/ssh-sync").IssuedAt(time.Now()).Build()
+					tok, err := jwt.NewBuilder().Issuer("github.com/therealpaulgg/ssh-sync").IssuedAt(time.Now()).Expiration(time.Now().Add(time.Minute)).Build()
 					if err != nil {
 						return err
 					}
-					signed, err := jwt.Sign(tok, jwa.ES512, key)
+					signed, err := jwt.Sign(tok, jwt.WithKey(jwa.ES512, key))
 					if err != nil {
 						return err
 					}
