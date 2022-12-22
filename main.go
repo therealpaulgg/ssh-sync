@@ -1,20 +1,21 @@
 package main
 
 import (
-	"encoding/json"
-	"encoding/pem"
-	"fmt"
-	"os"
-	"os/user"
-	"path"
-	"time"
-
-	"errors"
-
+	"bufio"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"fmt"
+	"os"
+	"os/user"
+	"path"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -125,6 +126,46 @@ func saveProfile(username string, machineName string) error {
 	return nil
 }
 
+type Host struct {
+	Host   string            `json:"host"`
+	Values map[string]string `json:"values"`
+}
+
+func parseSshConfig() ([]*Host, error) {
+	// parse the ssh config file and return a list of hosts
+	// the ssh config file is located at ~/.ssh/config
+	user, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	p := path.Join(user.HomeDir, ".ssh", "config")
+	file, err := os.Open(p)
+	if err != nil {
+		return nil, err
+	}
+	var hosts []*Host
+	scanner := bufio.NewScanner(file)
+	var currentHost *Host
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "Host ") {
+			if currentHost != nil {
+				hosts = append(hosts, currentHost)
+			}
+			currentHost = &Host{
+				Host:   strings.TrimPrefix(line, "Host "),
+				Values: make(map[string]string),
+			}
+		} else if re := regexp.MustCompile(`^\s+(\w+)[ =](.+)$`); re.Match([]byte(line)) {
+			currentHost.Values[re.FindStringSubmatch(line)[1]] = re.FindStringSubmatch(line)[2]
+		}
+	}
+	if currentHost != nil {
+		hosts = append(hosts, currentHost)
+	}
+	return hosts, nil
+}
+
 func main() {
 	app := &cli.App{
 		Name:        "ssh-sync",
@@ -228,6 +269,19 @@ func main() {
 							continue
 						}
 						println(file.Name())
+					}
+					return nil
+				},
+			},
+			{
+				Name: "parse-config",
+				Action: func(c *cli.Context) error {
+					hosts, err := parseSshConfig()
+					if err != nil {
+						return err
+					}
+					for _, host := range hosts {
+						fmt.Println(host)
 					}
 					return nil
 				},
