@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/therealpaulgg/ssh-sync/internal/actions"
+	"github.com/therealpaulgg/ssh-sync/pkg/actions"
 	"github.com/urfave/cli/v2"
 )
 
