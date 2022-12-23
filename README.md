@@ -10,7 +10,7 @@ You have a computer which has SSH keys and configuration on them, and on a secon
 
 P2P was considered (and may still be done at a later  date) but ultimately dismissed because every key sync request would have to involve two machines, which would get tedious quickly. The main idea is a transaction involving two machines at the same time would only have to be done once (to allow a new machine access to a user's keys). After this point, the new machine can communicate to the server freely, uploading and downloading new keys. A P2P implementation would mean that a machine would have to do a 'handshake' with another machine each time. There would also be no central source to keep key data synchronized.
 
-# Technical Details
+# Technical Details (Crypto)
 
 ## Initial Setup
 
@@ -79,8 +79,27 @@ Server saves B's public key and then sends `E_aPub(master_key)` & B's public key
 Machine A does `D_aPriv(enc_master_key)`, and then sends `E_bPub(master_key)` to the server.  
 Server then saves this new encrypted master key.
 
+# Other Technical Details
+
+## SSH Config Parsing
+
+Part of the syncing process will be where the program parses a user's SSH config file, and then sends the parsed format over to the server. Other machines, when syncing, will be able to have new config files generated for them based on what is in the server (and the CLI will handle changing user directories & OS changes).
+
 ## Data Conflicts
 
 TODO: after parsing SSH config, if there are duplicate entries, attempt to merge, but with conflicts, ask user how to resolve.
 
 TODO: what if duplicate keys get uploaded? ask user to replace/skip
+
+# P2P Concept
+
+If P2P was to be implemented, a lot of the crypto needed for the server implementation would be unnecessary. This is how a request would probably go:
+
+Machine B wants Machine A's keys and config.  
+Machine A challenges Machine B with a phrase.  
+Machine B responds to challenge, and sends its public key.  
+Assuming challenge is passed, Machine A encrypts its data using EC-DH-A256GCM (Machine B public key) and sends it over to Machine B.  
+Machine B would receive the data, decrypt it, and the program would manage things as necessary.
+
+All the other functionality of the program (i.e SSH config parser) would remain the same.
+
