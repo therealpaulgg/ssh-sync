@@ -33,15 +33,15 @@ For example, if Eve crafts a JWT that says `{"username": "Alice", "machineName":
 
 ### Master Key
 
-Each user will have a 'Master Key'. This will be a unique symmetric key. This symmetric key will be stored on the server, one copy for each keypair. All of the user's data will be stored on the server in an encrypted AES 256 GCM format. This data can only be decrypted with the master symmetric key, which can only be decrypted by the user using one of their user/machine keypairs.
+Each user will have a 'Master Key'. This will be a unique symmetric key. This symmetric key will be stored on the server, one copy for each keypair. For example, on the server, there would be `E_pubA(master_key)` and `E_pubB(master_key)`. All of the user's data will be stored on the server in an encrypted AES 256 GCM format. This data can only be decrypted with the master symmetric key, which can only be decrypted by the user using one of their user/machine keypairs.
 
 #### Upload
 
 Whenever the user wants to upload new data, the server will send the encrypted master key. The user will then decrypt the master key, and send encrypted keys to the server. 
 
-Server sends: `encrypted_master_key`
+Server sends: `E_pubMachine(master_key)`
 
-Machine decrypts master key, `master_key`
+Machine decrypts master key, `D_privMachine(E_pubMachine(master_key))`
 
 Machine encrypts keys with `master_key` and also signs the data.
 
@@ -59,13 +59,25 @@ Whenever the user wants to download data, the server will send all the user's da
 
 The user, once it receives the data, will decrypt the master key using their private key, and then decrypt the ciphertext.
 
-Server sends: `E_pubMachine(ciphertext), encrypted_master_key`
+Server sends: `E_pubMachine(ciphertext), E_pubMachine(master_key)`
 
-Machine decrypts master key, `master_key`
+Machine decrypts master key, `D_privMachine(E_pubMachine(master_key))`
 
 Machine decrypts ciphertext.
 
 `D_masterKey(D_privMachine(ciphertext))`
+
+## Adding New Machines
+
+Adding a new machine will require one of the user's other machines. The new machine will make a request to the server to be added. The server will then respond with some sort of challenge, requesting that the user enters a phrase on one of their old machines. Once the user enters the phrase on their old machine, the server will then allow them to upload a public keypair so they can do communication with the server. The old machine will need to be involved a little longer so that it can decrypt the master key, and upload a new master key using this new machine's public key. Here is the full process laid out:
+
+Machine B requests to be added to allowed clients  
+Server gives Machine B a challenge phrase which must be entered on Machine A  
+Challenge phrase is entered on Machine A.  Machine A awaits response from server (Machine B's public key)  
+Machine B generates keypair and uploads public key to server.  
+Server saves B's public key and then sends `E_aPub(master_key)` & B's public key to Machine A.  
+Machine A does `D_aPriv(enc_master_key)`, and then sends `E_bPub(master_key)` to the server.  
+Server then saves this new encrypted master key.
 
 ## Data Conflicts
 
