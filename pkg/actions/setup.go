@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -9,9 +10,12 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"mime/multipart"
+	"net/http"
 	"os"
 	"os/user"
 	"path"
+	"strconv"
 
 	"github.com/urfave/cli/v2"
 )
@@ -105,28 +109,43 @@ func saveProfile(username string, machineName string) error {
 	return nil
 }
 
-func Setup(c *cli.Context) error {
-	// all files will be stored in ~/.ssh-sync
-	// there will be a profile.json file containing the machine name and the username
-	// there will also be a keypair.
-	// check if setup has been completed before
-	setup, err := checkIfSetup()
+func checkIfAccountExists(username string) (bool, error) {
+	res, err := http.Get("http://localhost:3000/api/v1/users/" + username)
 	if err != nil {
-		return err
+		return false, err
 	}
-	if setup {
-		// if it has been completed, the user may want to restart.
-		// if so this is a destructive operation and will result in the deletion of all saved data relating to ssh-sync.
-		fmt.Println("ssh-sync has already been set up on this system.")
-		return nil
+	if res.StatusCode == 404 {
+		return false, nil
 	}
-	// if not:
+	return true, nil
+}
+
+func getPubkeyFile() (*os.File, error) {
+	user, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	pubkeyFile, err := os.Open(path.Join(user.HomeDir, ".ssh-sync", "keypair.pub"))
+	if err != nil {
+		return nil, err
+	}
+	return pubkeyFile, nil
+}
+
+func newAccountSetup() error {
 	// ask user to pick a username.
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
-	_, err = fmt.Scanln(&username)
+	_, err := fmt.Scanln(&username)
 	if err != nil {
 		return err
+	}
+	exists, err := checkIfAccountExists(username)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.New("user already exists on the server")
 	}
 	// ask user to pick a name for this machine (default to current system name)
 	fmt.Print("Please enter a name for this machine: ")
@@ -143,5 +162,84 @@ func Setup(c *cli.Context) error {
 	}
 	// then the program will save the profile to ~/.ssh-sync/profile.json
 	saveProfile(username, machineName)
+	var multipartBody bytes.Buffer
+	multipartWriter := multipart.NewWriter(&multipartBody)
+	pubkeyFile, err := getPubkeyFile()
+	if err != nil {
+		return err
+	}
+	multipartWriter.CreateFormFile("key", pubkeyFile.Name())
+	multipartWriter.WriteField("username", username)
+	multipartWriter.WriteField("machine_name", machineName)
+	multipartWriter.Close()
+	req, err := http.Post("http://localhost:3000/api/v1/user/", "multipart/form-data", &multipartBody)
+	if err != nil {
+		return err
+	}
+	if req.StatusCode != 200 {
+		return errors.New("failed to create user. status code: " + strconv.Itoa(req.StatusCode))
+	}
 	return nil
+}
+
+func existingAccountSetup() error {
+	// ask user to enter their username
+	fmt.Print("Please enter your username: ")
+	var username string
+	_, err := fmt.Scanln(&username)
+	if err != nil {
+		return err
+	}
+	exists, err := checkIfAccountExists(username)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("user does not exist on the server")
+	}
+	// ask user to enter their machine name
+	fmt.Print("Please enter the name of this machine: ")
+	var machineName string
+	_, err = fmt.Scanln(&machineName)
+	if err != nil {
+		return err
+	}
+	// then the program will generate a keypair, and upload the public key to the server
+	fmt.Println("Generating keypair...")
+	err = generateKey()
+	if err != nil {
+		return err
+	}
+	// then the program will save the profile to ~/.ssh-sync/profile.json
+	saveProfile(username, machineName)
+	// TODO challenge
+	return nil
+}
+
+func Setup(c *cli.Context) error {
+	// all files will be stored in ~/.ssh-sync
+	// there will be a profile.json file containing the machine name and the username
+	// there will also be a keypair.
+	// check if setup has been completed before
+	setup, err := checkIfSetup()
+	if err != nil {
+		return err
+	}
+	if setup {
+		// if it has been completed, the user may want to restart.
+		// if so this is a destructive operation and will result in the deletion of all saved data relating to ssh-sync.
+		fmt.Println("ssh-sync has already been set up on this system.")
+		return nil
+	}
+	// ask user if they already have an account on the ssh-sync server.
+	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
+	var answer string
+	_, err = fmt.Scanln(&answer)
+	if err != nil {
+		return err
+	}
+	if answer == "y" {
+		return existingAccountSetup()
+	}
+	return newAccountSetup()
 }

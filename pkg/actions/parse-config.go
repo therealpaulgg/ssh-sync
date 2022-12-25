@@ -32,6 +32,7 @@ func parseSshConfig() ([]Host, error) {
 	var hosts []Host
 	scanner := bufio.NewScanner(file)
 	var currentHost *Host
+	re := regexp.MustCompile(`^\s+(\w+)[ =](.+)$`)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "Host ") {
@@ -42,7 +43,7 @@ func parseSshConfig() ([]Host, error) {
 				Host:   strings.TrimPrefix(line, "Host "),
 				Values: make(map[string]string),
 			}
-		} else if re := regexp.MustCompile(`^\s+(\w+)[ =](.+)$`); re.Match([]byte(line)) {
+		} else if re.Match([]byte(line)) {
 			currentHost.Values[re.FindStringSubmatch(line)[1]] = re.FindStringSubmatch(line)[2]
 		}
 	}
