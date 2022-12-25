@@ -9,15 +9,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/urfave/cli/v2"
 )
 
-type Host struct {
-	Host   string            `json:"host"`
-	Values map[string]string `json:"values"`
-}
-
-func parseSshConfig() ([]Host, error) {
+func parseSshConfig() ([]models.Host, error) {
 	// parse the ssh config file and return a list of hosts
 	// the ssh config file is located at ~/.ssh/config
 	user, err := user.Current()
@@ -29,9 +25,9 @@ func parseSshConfig() ([]Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	var hosts []Host
+	var hosts []models.Host
 	scanner := bufio.NewScanner(file)
-	var currentHost *Host
+	var currentHost *models.Host
 	re := regexp.MustCompile(`^\s+(\w+)[ =](.+)$`)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -39,7 +35,7 @@ func parseSshConfig() ([]Host, error) {
 			if currentHost != nil {
 				hosts = append(hosts, *currentHost)
 			}
-			currentHost = &Host{
+			currentHost = &models.Host{
 				Host:   strings.TrimPrefix(line, "Host "),
 				Values: make(map[string]string),
 			}

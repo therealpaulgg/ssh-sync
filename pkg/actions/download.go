@@ -1,8 +1,27 @@
 package actions
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+	"os"
+
+	"github.com/therealpaulgg/ssh-sync/pkg/utils"
+	"github.com/urfave/cli/v2"
+)
 
 func Download(c *cli.Context) error {
+	setup, err := checkIfSetup()
+	if err != nil {
+		return err
+	}
+	if !setup {
+		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
+		return nil
+	}
+	token, err := utils.GetToken()
+	if err != nil {
+		return err
+	}
+	fmt.Println(token)
 	// Computer A has uploaded their keys to the server
 	// Computer B wants to download the keys from the server
 	// How can the server store the keys encrypted, and allow Computer B to decrypt them?

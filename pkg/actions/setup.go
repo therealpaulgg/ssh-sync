@@ -18,6 +18,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/urfave/cli/v2"
 )
 
@@ -38,11 +39,6 @@ func checkIfSetup() (bool, error) {
 		return false, err
 	}
 	return true, nil
-}
-
-type Profile struct {
-	Username    string `json:"username"`
-	MachineName string `json:"machine_name"`
 }
 
 func generateKey() error {
@@ -95,7 +91,7 @@ func saveProfile(username string, machineName string) error {
 		return err
 	}
 	p := path.Join(user.HomeDir, ".ssh-sync", "profile.json")
-	profile := Profile{
+	profile := models.Profile{
 		Username:    username,
 		MachineName: machineName,
 	}
