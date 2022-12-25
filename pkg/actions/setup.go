@@ -18,6 +18,8 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/urfave/cli/v2"
 )
@@ -41,47 +43,47 @@ func checkIfSetup() (bool, error) {
 	return true, nil
 }
 
-func generateKey() error {
+func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	pub := &priv.PublicKey
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	// then the program will save the keypair to ~/.ssh-sync/keypair.pub and ~/.ssh-sync/keypair
 	user, err := user.Current()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	p := path.Join(user.HomeDir, ".ssh-sync")
 	err = os.MkdirAll(p, 0700)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	privBytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	pubOut, err := os.OpenFile(path.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer pubOut.Close()
 	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
-		return err
+		return nil, nil, err
 	}
 	privOut, err := os.OpenFile(path.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer privOut.Close()
 	if err := pem.Encode(privOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return err
+		return nil, nil, err
 	}
-	return nil
+	return priv, pub, nil
 }
 
 func saveProfile(username string, machineName string) error {
@@ -129,6 +131,15 @@ func getPubkeyFile() (*os.File, error) {
 	return pubkeyFile, nil
 }
 
+func createMasterKey() ([]byte, error) {
+	masterKey := make([]byte, 32)
+	_, err := rand.Read(masterKey)
+	if err != nil {
+		return nil, err
+	}
+	return masterKey, nil
+}
+
 func newAccountSetup() error {
 	// ask user to pick a username.
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
@@ -153,7 +164,7 @@ func newAccountSetup() error {
 	}
 	// then the program will generate a keypair, and upload the public key to the server
 	fmt.Println("Generating keypair...")
-	err = generateKey()
+	_, pub, err := generateKey()
 	if err != nil {
 		return err
 	}
@@ -165,10 +176,19 @@ func newAccountSetup() error {
 	if err != nil {
 		return err
 	}
+	masterKey, err := createMasterKey()
+	if err != nil {
+		return err
+	}
+	encryptedMasterKey, err := jwe.Encrypt(masterKey, jwe.WithKey(jwa.ECDH_ES_A256KW, pub))
+	if err != nil {
+		return err
+	}
 	fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
 	io.Copy(fileWriter, pubkeyFile)
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
+	multipartWriter.WriteField("master_key", string(encryptedMasterKey))
 	multipartWriter.Close()
 	req, err := http.NewRequest("POST", "http://localhost:3000/api/v1/setup", &multipartBody)
 	if err != nil {
@@ -209,7 +229,7 @@ func existingAccountSetup() error {
 	}
 	// then the program will generate a keypair, and upload the public key to the server
 	fmt.Println("Generating keypair...")
-	err = generateKey()
+	_, _, err = generateKey()
 	if err != nil {
 		return err
 	}

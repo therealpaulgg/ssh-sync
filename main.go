@@ -19,10 +19,6 @@ func main() {
 				Action:      actions.Setup,
 			},
 			{
-				Name:   "token",
-				Action: actions.Token,
-			},
-			{
 				Name: "upload",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
