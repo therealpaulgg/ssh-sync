@@ -7,7 +7,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 )

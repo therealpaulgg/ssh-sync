@@ -18,9 +18,8 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/lestrrat-go/jwx/v2/jwa"
-	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
+	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -164,7 +163,7 @@ func newAccountSetup() error {
 	}
 	// then the program will generate a keypair, and upload the public key to the server
 	fmt.Println("Generating keypair...")
-	_, pub, err := generateKey()
+	_, _, err = generateKey()
 	if err != nil {
 		return err
 	}
@@ -180,7 +179,7 @@ func newAccountSetup() error {
 	if err != nil {
 		return err
 	}
-	encryptedMasterKey, err := jwe.Encrypt(masterKey, jwe.WithKey(jwa.ECDH_ES_A256KW, pub))
+	encryptedMasterKey, err := utils.Encrypt(masterKey)
 	if err != nil {
 		return err
 	}
@@ -235,8 +234,7 @@ func existingAccountSetup() error {
 	}
 	// then the program will save the profile to ~/.ssh-sync/profile.json
 	saveProfile(username, machineName)
-	// TODO challenge
-	return nil
+	return errors.New("not implemented")
 }
 
 func Setup(c *cli.Context) error {
