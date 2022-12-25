@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"math/rand"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
@@ -17,8 +18,11 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO: make one nonce, or do we make a separate byte buffer and write to that?
 	nonce := make([]byte, gcm.NonceSize())
+	_, err = rand.Read(nonce)
+	if err != nil {
+		return nil, err
+	}
 	outBuf := gcm.Seal(nonce, nonce, plaintext, nil)
 	if err != nil {
 		return nil, err
