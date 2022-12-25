@@ -24,7 +24,7 @@ func WriteConfig(hosts []models.Host) error {
 			return err
 		}
 	}
-	file, err := os.Create(path.Join(p, "config"))
+	file, err := os.OpenFile(path.Join(p, "config"), os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func WriteKey(key []byte, filename string) error {
 			return err
 		}
 	}
-	file, err := os.Create(path.Join(p, filename))
+	file, err := os.OpenFile(path.Join(p, filename), os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
