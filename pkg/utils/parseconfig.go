@@ -1,8 +1,7 @@
-package actions
+package utils
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"os/user"
 	"path"
@@ -10,10 +9,9 @@ import (
 	"strings"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
-	"github.com/urfave/cli/v2"
 )
 
-func parseSshConfig() ([]models.Host, error) {
+func ParseConfig() ([]models.Host, error) {
 	// parse the ssh config file and return a list of hosts
 	// the ssh config file is located at ~/.ssh/config
 	user, err := user.Current()
@@ -47,15 +45,4 @@ func parseSshConfig() ([]models.Host, error) {
 		hosts = append(hosts, *currentHost)
 	}
 	return hosts, nil
-}
-
-func ParseConfig(c *cli.Context) error {
-	hosts, err := parseSshConfig()
-	if err != nil {
-		return err
-	}
-	for _, host := range hosts {
-		fmt.Println(host)
-	}
-	return nil
 }

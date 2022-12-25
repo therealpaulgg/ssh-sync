@@ -14,6 +14,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -66,9 +67,15 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	var hosts []models.Host
 	for _, file := range data {
-		if file.IsDir() || file.Name() == "config" || file.Name() == "authorized_keys" {
+		if file.IsDir() || file.Name() == "authorized_keys" {
 			continue
+		} else if file.Name() == "config" {
+			hosts, err = utils.ParseConfig()
+			if err != nil {
+				return err
+			}
 		}
 		f, err := os.OpenFile(path.Join(p, file.Name()), os.O_RDONLY, 0600)
 		if err != nil {
@@ -85,6 +92,20 @@ func Upload(c *cli.Context) error {
 		}
 		w, _ := multipartWriter.CreateFormFile("keys[]", file.Name())
 		_, err = io.Copy(w, bytes.NewReader(encBytes))
+		if err != nil {
+			return err
+		}
+	}
+	if hosts != nil {
+		jsonBytes, err := json.Marshal(hosts)
+		if err != nil {
+			return err
+		}
+		w, err := multipartWriter.CreateFormField("ssh_config")
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(jsonBytes)
 		if err != nil {
 			return err
 		}

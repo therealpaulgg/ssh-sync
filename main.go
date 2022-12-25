@@ -33,10 +33,6 @@ func main() {
 				Name:   "download",
 				Action: actions.Download,
 			},
-			{
-				Name:   "parse-config",
-				Action: actions.ParseConfig,
-			},
 		},
 	}
 	err := app.Run(os.Args)
