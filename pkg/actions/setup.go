@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -168,16 +169,22 @@ func newAccountSetup() error {
 	if err != nil {
 		return err
 	}
-	multipartWriter.CreateFormFile("key", pubkeyFile.Name())
+	fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
+	io.Copy(fileWriter, pubkeyFile)
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.Close()
-	req, err := http.Post("http://localhost:3000/api/v1/user/", "multipart/form-data", &multipartBody)
+	req, err := http.NewRequest("POST", "http://localhost:3000/api/v1/setup", &multipartBody)
 	if err != nil {
 		return err
 	}
-	if req.StatusCode != 200 {
-		return errors.New("failed to create user. status code: " + strconv.Itoa(req.StatusCode))
+	req.Header.Add("Content-Type", multipartWriter.FormDataContentType())
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != 200 {
+		return errors.New("failed to create user. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"os/user"
 	"path"
 
-	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 func RetrievePrivateKey() (jwk.Key, error) {
