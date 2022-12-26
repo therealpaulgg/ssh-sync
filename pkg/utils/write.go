@@ -33,9 +33,11 @@ func WriteConfig(hosts []models.Host) error {
 		if err != nil {
 			return err
 		}
-		_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, host.IdentityFile)))
-		if err != nil {
-			return err
+		if host.IdentityFile != "" {
+			_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, host.IdentityFile)))
+			if err != nil {
+				return err
+			}
 		}
 		for key, value := range host.Values {
 			_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", key, value))
