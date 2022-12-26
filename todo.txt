@@ -17,3 +17,5 @@
 - do not hardcode localhost calls :)
 - add a CLI call for resetting data (delete from the server & delete locally) - effectively deleting the device
 - why isnt the timer working?
+
+- dont hardcode challenge-phrase :/
