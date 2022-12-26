@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
@@ -17,7 +17,7 @@ func GetToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	p := path.Join(user.HomeDir, ".ssh-sync", "profile.json")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
 	jsonBytes, err := os.ReadFile(p)
 	if err != nil {
 		return "", err

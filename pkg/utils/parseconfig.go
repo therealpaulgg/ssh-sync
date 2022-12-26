@@ -2,10 +2,12 @@ package utils
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
@@ -18,7 +20,7 @@ func ParseConfig() ([]models.Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := path.Join(user.HomeDir, ".ssh", "config")
+	p := filepath.Join(user.HomeDir, ".ssh", "config")
 	file, err := os.Open(p)
 	if err != nil {
 		return nil, err
@@ -41,8 +43,15 @@ func ParseConfig() ([]models.Host, error) {
 			key := re.FindStringSubmatch(line)[1]
 			value := re.FindStringSubmatch(line)[2]
 			if key == "IdentityFile" {
-				identityFile := strings.TrimPrefix(value, user.HomeDir)
-				currentHost.IdentityFile = identityFile
+				homeDir := user.HomeDir
+				if runtime.GOOS == "windows" {
+					value = strings.ToLower(value)
+					homeDir = strings.ToLower(user.HomeDir)
+				}
+				identityFile := strings.TrimPrefix(value, homeDir)
+				normalizedIdentityFilePath := filepath.ToSlash(identityFile)
+				fmt.Println(normalizedIdentityFilePath)
+				currentHost.IdentityFile = normalizedIdentityFilePath
 			} else {
 				currentHost.Values[key] = value
 			}

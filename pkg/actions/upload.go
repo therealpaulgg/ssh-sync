@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"strconv"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
@@ -62,7 +62,7 @@ func Upload(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		p = path.Join(user.HomeDir, ".ssh")
+		p = filepath.Join(user.HomeDir, ".ssh")
 	}
 	data, err := os.ReadDir(p)
 	if err != nil {
@@ -79,7 +79,7 @@ func Upload(c *cli.Context) error {
 			}
 			continue
 		}
-		f, err := os.OpenFile(path.Join(p, file.Name()), os.O_RDONLY, 0600)
+		f, err := os.OpenFile(filepath.Join(p, file.Name()), os.O_RDONLY, 0600)
 		if err != nil {
 			return err
 		}

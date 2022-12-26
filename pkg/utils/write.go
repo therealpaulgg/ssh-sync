@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 )
@@ -15,7 +15,7 @@ func WriteConfig(hosts []models.Host) error {
 	if err != nil {
 		return err
 	}
-	p := path.Join(user.HomeDir, "/.ssh-sync-data")
+	p := filepath.Join(user.HomeDir, "/.ssh-sync-data")
 	_, err = os.Stat(p)
 	if errors.Is(err, os.ErrNotExist) {
 		err = os.MkdirAll(p, 0700)
@@ -23,7 +23,7 @@ func WriteConfig(hosts []models.Host) error {
 			return err
 		}
 	}
-	file, err := os.OpenFile(path.Join(p, "config"), os.O_WRONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(filepath.Join(p, "config"), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func WriteConfig(hosts []models.Host) error {
 		if err != nil {
 			return err
 		}
-		_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", path.Join(user.HomeDir, host.IdentityFile)))
+		_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, host.IdentityFile)))
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func WriteKey(key []byte, filename string) error {
 	if err != nil {
 		return err
 	}
-	p := path.Join(user.HomeDir, "/.ssh-sync-data")
+	p := filepath.Join(user.HomeDir, "/.ssh-sync-data")
 	_, err = os.Stat(p)
 	if errors.Is(err, os.ErrNotExist) {
 		err = os.MkdirAll(p, 0700)
@@ -60,7 +60,7 @@ func WriteKey(key []byte, filename string) error {
 			return err
 		}
 	}
-	file, err := os.OpenFile(path.Join(p, filename), os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(filepath.Join(p, filename), os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}

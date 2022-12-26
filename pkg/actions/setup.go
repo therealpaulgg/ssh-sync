@@ -17,7 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gobwas/ws"
@@ -36,7 +36,7 @@ func checkIfSetup() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	p := path.Join(user.HomeDir, ".ssh-sync", "profile.json")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
 	_, err = os.Stat(p)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -58,7 +58,7 @@ func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	p := path.Join(user.HomeDir, ".ssh-sync")
+	p := filepath.Join(user.HomeDir, ".ssh-sync")
 	err = os.MkdirAll(p, 0700)
 	if err != nil {
 		return nil, nil, err
@@ -71,7 +71,7 @@ func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	pubOut, err := os.OpenFile(path.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -79,7 +79,7 @@ func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
 		return nil, nil, err
 	}
-	privOut, err := os.OpenFile(path.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -96,7 +96,7 @@ func saveProfile(username string, machineName string) error {
 	if err != nil {
 		return err
 	}
-	p := path.Join(user.HomeDir, ".ssh-sync", "profile.json")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
 	profile := models.Profile{
 		Username:    username,
 		MachineName: machineName,
@@ -128,7 +128,7 @@ func getPubkeyFile() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	pubkeyFile, err := os.Open(path.Join(user.HomeDir, ".ssh-sync", "keypair.pub"))
+	pubkeyFile, err := os.Open(filepath.Join(user.HomeDir, ".ssh-sync", "keypair.pub"))
 	if err != nil {
 		return nil, err
 	}

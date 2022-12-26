@@ -3,7 +3,7 @@ package utils
 import (
 	"os"
 	"os/user"
-	"path"
+	"path/filepath"
 
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
@@ -13,7 +13,7 @@ func RetrievePrivateKey() (jwk.Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := path.Join(user.HomeDir, ".ssh-sync", "keypair")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "keypair")
 	file, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func RetrievePublicKey() (jwk.Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := path.Join(user.HomeDir, ".ssh-sync", "keypair.pub")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "keypair.pub")
 	file, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
