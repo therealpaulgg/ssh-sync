@@ -30,3 +30,12 @@ type UserMachineDto struct {
 	Username    string `json:"username"`
 	MachineName string `json:"machine_name"`
 }
+
+type ChallengeResponseDto struct {
+	Challenge string `json:"challenge"`
+}
+
+type ChallengeSuccessEncryptedKeyDto struct {
+	EncryptedMasterKey []byte `json:"encrypted_master_key"`
+	PublicKey          []byte `json:"public_key"`
+}

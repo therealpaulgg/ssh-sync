@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -226,11 +227,40 @@ func existingAccountSetup() error {
 	if err != nil {
 		return err
 	}
-	msg, err := wsutil.ReadServerBinary(conn)
+	challengePhrase, err := wsutil.ReadServerBinary(conn)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(msg))
+	fmt.Println(string(challengePhrase))
+	waiting, err := wsutil.ReadServerBinary(conn)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(waiting))
+	fmt.Println("here 1")
+	fmt.Println("Generating keypair...")
+	_, _, err = generateKey()
+	if err != nil {
+		return err
+	}
+	f, err := getPubkeyFile()
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	pubkey, err := ioutil.ReadAll(f)
+	if err != nil {
+		return err
+	}
+	err = wsutil.WriteClientBinary(conn, pubkey)
+	if err != nil {
+		return err
+	}
+	waiting, err = wsutil.ReadServerBinary(conn)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(waiting))
 	return nil
 }
 

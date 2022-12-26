@@ -33,6 +33,10 @@ func main() {
 				Name:   "download",
 				Action: actions.Download,
 			},
+			{
+				Name:   "challenge-response",
+				Action: actions.ChallengeResponse,
+			},
 		},
 	}
 	err := app.Run(os.Args)
