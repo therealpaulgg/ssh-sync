@@ -37,6 +37,14 @@ func main() {
 				Name:   "challenge-response",
 				Action: actions.ChallengeResponse,
 			},
+			{
+				Name:   "remove-machine",
+				Action: actions.RemoveMachine,
+			},
+			{
+				Name:   "reset",
+				Action: actions.Reset,
+			},
 		},
 	}
 	err := app.Run(os.Args)

@@ -16,6 +16,5 @@
 - practically, on first time setup, a user will need to enter the URL of their server, since this will be a self hosted app
 - do not hardcode localhost calls :)
 - add a CLI call for resetting data (delete from the server & delete locally) - effectively deleting the device
-- why isnt the timer working?
 
 - dont hardcode challenge-phrase :/

@@ -8,6 +8,7 @@ type DataDto struct {
 	Keys      []KeyDto       `json:"keys"`
 	MasterKey []byte         `json:"master_key"`
 	SshConfig []SshConfigDto `json:"ssh_config"`
+	Machines  []MachineDto   `json:"machines"`
 }
 
 type KeyDto struct {
@@ -23,8 +24,13 @@ type SshConfigDto struct {
 	IdentityFile string            `json:"identity_file"`
 }
 
+type MachineDto struct {
+	Name string `json:"machine_name"`
+}
+
 type UserDto struct {
-	Username string `json:"username"`
+	Username string       `json:"username"`
+	Machines []MachineDto `json:"machines"`
 }
 
 type UserMachineDto struct {

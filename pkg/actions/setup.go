@@ -90,6 +90,23 @@ func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	return priv, pub, nil
 }
 
+func getProfile() (*models.Profile, error) {
+	user, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
+	dat, err := os.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	var profile models.Profile
+	if err = json.Unmarshal(dat, &profile); err != nil {
+		return nil, err
+	}
+	return &profile, nil
+}
+
 func saveProfile(username string, machineName string) error {
 	// then the program will save the profile to ~/.ssh-sync/profile.json
 	user, err := user.Current()
