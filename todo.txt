@@ -1,0 +1,19 @@
+- Apparently you can have duplicate keys in a ssh config. Will have to not use a map[string]string and instead use a []keyValuePair or something.
+- IdentityFile - due to this duplicate attribute issue, probably forget about storing it in its own column in the database and just ensure that the CLI parses it carefully
+- add a space to each host entry in the ssh config generation
+- Better error messages for clients
+- better error handling if possible (half the codebase is probably if err != nil)
+- ensure the 'live' code is robust from both ends (client, server)
+- the live websocket code is scrappy, make it better
+- data conflicts - how to resolve merging?
+- currently it is possible to upload a duplicate ssh_configs entry where host, identity_file, etc. are the same. Probably need to figure this one out
+- Allow users to delete devices
+- Allow users to delete certain keys or config entries
+- allow users to completely delete their account
+
+- this is a zero knowledge app, but maybe there are some things we should do to prevent the client from just sending whatever the hell it wants to the server?
+
+- practically, on first time setup, a user will need to enter the URL of their server, since this will be a self hosted app
+- do not hardcode localhost calls :)
+- add a CLI call for resetting data (delete from the server & delete locally) - effectively deleting the device
+- why isnt the timer working?
