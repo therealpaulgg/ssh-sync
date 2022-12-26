@@ -38,7 +38,15 @@ func ParseConfig() ([]models.Host, error) {
 				Values: make(map[string]string),
 			}
 		} else if re.Match([]byte(line)) {
-			currentHost.Values[re.FindStringSubmatch(line)[1]] = re.FindStringSubmatch(line)[2]
+			key := re.FindStringSubmatch(line)[1]
+			value := re.FindStringSubmatch(line)[2]
+			if key == "IdentityFile" {
+				identityFile := strings.TrimPrefix(value, user.HomeDir)
+				currentHost.IdentityFile = identityFile
+			} else {
+				currentHost.Values[key] = value
+			}
+
 		}
 	}
 	if currentHost != nil {

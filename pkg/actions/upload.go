@@ -14,6 +14,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
@@ -44,7 +45,7 @@ func Upload(c *cli.Context) error {
 	if res.StatusCode != 200 {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
-	var dataDto DataDto
+	var dataDto dto.DataDto
 	err = json.NewDecoder(res.Body).Decode(&dataDto)
 	if err != nil {
 		return err
@@ -76,6 +77,7 @@ func Upload(c *cli.Context) error {
 			if err != nil {
 				return err
 			}
+			continue
 		}
 		f, err := os.OpenFile(path.Join(p, file.Name()), os.O_RDONLY, 0600)
 		if err != nil {

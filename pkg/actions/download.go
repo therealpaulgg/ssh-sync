@@ -8,32 +8,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/samber/lo"
+	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
-
-type DataDto struct {
-	ID        uuid.UUID      `json:"id"`
-	Username  string         `json:"username"`
-	Keys      []KeyDto       `json:"keys"`
-	MasterKey []byte         `json:"master_key"`
-	SshConfig []SshConfigDto `json:"ssh_config"`
-}
-
-type KeyDto struct {
-	ID       uuid.UUID `json:"id"`
-	UserID   uuid.UUID `json:"user_id"`
-	Filename string    `json:"filename"`
-	Data     []byte    `json:"data"`
-}
-
-type SshConfigDto struct {
-	Host   string            `json:"host"`
-	Values map[string]string `json:"values"`
-}
 
 func Download(c *cli.Context) error {
 	setup, err := checkIfSetup()
@@ -60,7 +40,7 @@ func Download(c *cli.Context) error {
 	if res.StatusCode != 200 {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
-	var data DataDto
+	var data dto.DataDto
 	err = json.NewDecoder(res.Body).Decode(&data)
 	if err != nil {
 		return err
@@ -76,10 +56,11 @@ func Download(c *cli.Context) error {
 		}
 		data.Keys[i].Data = decryptedKey
 	}
-	err = utils.WriteConfig(lo.Map(data.SshConfig, func(config SshConfigDto, i int) models.Host {
+	err = utils.WriteConfig(lo.Map(data.SshConfig, func(config dto.SshConfigDto, i int) models.Host {
 		return models.Host{
-			Host:   config.Host,
-			Values: config.Values,
+			Host:         config.Host,
+			Values:       config.Values,
+			IdentityFile: config.IdentityFile,
 		}
 	}))
 	if err != nil {
