@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -50,7 +49,6 @@ func ParseConfig() ([]models.Host, error) {
 				}
 				identityFile := strings.TrimPrefix(value, homeDir)
 				normalizedIdentityFilePath := filepath.ToSlash(identityFile)
-				fmt.Println(normalizedIdentityFilePath)
 				currentHost.IdentityFile = normalizedIdentityFilePath
 			} else {
 				currentHost.Values[key] = value
