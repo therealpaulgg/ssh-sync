@@ -210,6 +210,25 @@ func newAccountSetup() error {
 }
 
 func existingAccountSetup() error {
+	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
+	var username string
+	_, err := fmt.Scanln(&username)
+	if err != nil {
+		return err
+	}
+	exists, err := checkIfAccountExists(username)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("user doesn't exist. try creating a new account")
+	}
+	fmt.Print("Please enter a name for this machine: ")
+	var machineName string
+	_, err = fmt.Scanln(&machineName)
+	if err != nil {
+		return err
+	}
 	dialer := ws.Dialer{}
 	conn, _, _, err := dialer.Dial(context.Background(), "ws://localhost:3000/api/v1/setup/existing")
 	if err != nil {
@@ -217,8 +236,8 @@ func existingAccountSetup() error {
 	}
 	defer conn.Close()
 	dto := dto.UserMachineDto{}
-	dto.Username = "therealpaulgg"
-	dto.MachineName = "pauls-macbook"
+	dto.Username = username
+	dto.MachineName = machineName
 	b, err := json.Marshal(dto)
 	if err != nil {
 		return err
@@ -243,6 +262,7 @@ func existingAccountSetup() error {
 	if err != nil {
 		return err
 	}
+	saveProfile(username, machineName)
 	f, err := getPubkeyFile()
 	if err != nil {
 		return err

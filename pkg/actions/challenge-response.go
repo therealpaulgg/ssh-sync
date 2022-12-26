@@ -53,6 +53,7 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	// TODO - if connection is closed, close gracefully
 	keyData, err := wsutil.ReadServerBinary(conn)
 	if err != nil {
 		return err
@@ -66,7 +67,6 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(response)
 	encryptedMasterKey2, err := utils.EncryptWithPublicKey(masterKey, response.PublicKey)
 	if err != nil {
 		return err
@@ -75,6 +75,7 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("Challenge has been successfully completed and your new encrypted master key has been sent to server. You may now use ssh-sync on your new machine.")
 	// now send
 	return nil
 }
