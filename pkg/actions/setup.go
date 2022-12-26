@@ -2,6 +2,7 @@ package actions
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -18,6 +19,9 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
+	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
@@ -205,36 +209,29 @@ func newAccountSetup() error {
 }
 
 func existingAccountSetup() error {
-	// ask user to enter their username
-	fmt.Print("Please enter your username: ")
-	var username string
-	_, err := fmt.Scanln(&username)
+	dialer := ws.Dialer{}
+	conn, _, _, err := dialer.Dial(context.Background(), "ws://localhost:3000/api/v1/setup/existing")
 	if err != nil {
 		return err
 	}
-	exists, err := checkIfAccountExists(username)
+	defer conn.Close()
+	dto := dto.UserMachineDto{}
+	dto.Username = "therealpaulgg"
+	dto.MachineName = "pauls-macbook"
+	b, err := json.Marshal(dto)
 	if err != nil {
 		return err
 	}
-	if !exists {
-		return errors.New("user does not exist on the server")
-	}
-	// ask user to enter their machine name
-	fmt.Print("Please enter the name of this machine: ")
-	var machineName string
-	_, err = fmt.Scanln(&machineName)
+	err = wsutil.WriteClientBinary(conn, b)
 	if err != nil {
 		return err
 	}
-	// then the program will generate a keypair, and upload the public key to the server
-	fmt.Println("Generating keypair...")
-	_, _, err = generateKey()
+	msg, err := wsutil.ReadServerBinary(conn)
 	if err != nil {
 		return err
 	}
-	// then the program will save the profile to ~/.ssh-sync/profile.json
-	saveProfile(username, machineName)
-	return errors.New("not implemented")
+	fmt.Println(string(msg))
+	return nil
 }
 
 func Setup(c *cli.Context) error {
@@ -242,20 +239,20 @@ func Setup(c *cli.Context) error {
 	// there will be a profile.json file containing the machine name and the username
 	// there will also be a keypair.
 	// check if setup has been completed before
-	setup, err := checkIfSetup()
-	if err != nil {
-		return err
-	}
-	if setup {
-		// if it has been completed, the user may want to restart.
-		// if so this is a destructive operation and will result in the deletion of all saved data relating to ssh-sync.
-		fmt.Println("ssh-sync has already been set up on this system.")
-		return nil
-	}
+	// setup, err := checkIfSetup()
+	// if err != nil {
+	// 	return err
+	// }
+	// if setup {
+	// 	// if it has been completed, the user may want to restart.
+	// 	// if so this is a destructive operation and will result in the deletion of all saved data relating to ssh-sync.
+	// 	fmt.Println("ssh-sync has already been set up on this system.")
+	// 	return nil
+	// }
 	// ask user if they already have an account on the ssh-sync server.
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
 	var answer string
-	_, err = fmt.Scanln(&answer)
+	_, err := fmt.Scanln(&answer)
 	if err != nil {
 		return err
 	}
