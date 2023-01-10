@@ -249,17 +249,13 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	if !exists {
 		return errors.New("user doesn't exist. try creating a new account")
 	}
-	profile, err := utils.GetProfile()
-	if err != nil {
-		return err
-	}
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
 	_, err = fmt.Scanln(&machineName)
 	if err != nil {
 		return err
 	}
-	wsUrl := profile.ServerUrl
+	wsUrl := *serverUrl
 	if wsUrl.Scheme == "http" {
 		wsUrl.Scheme = "ws"
 	} else {
