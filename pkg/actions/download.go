@@ -24,11 +24,17 @@ func Download(c *cli.Context) error {
 		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
 		return nil
 	}
+	profile, err := utils.GetProfile()
+	if err != nil {
+		return err
+	}
 	token, err := utils.GetToken()
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("GET", "http://localhost:3000/api/v1/data", nil)
+	dataUrl := profile.ServerUrl
+	dataUrl.Path = "/api/v1/data"
+	req, err := http.NewRequest("GET", dataUrl.String(), nil)
 	if err != nil {
 		return err
 	}

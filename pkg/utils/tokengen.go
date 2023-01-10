@@ -1,29 +1,14 @@
 package utils
 
 import (
-	"encoding/json"
-	"os"
-	"os/user"
-	"path/filepath"
 	"time"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
-	"github.com/therealpaulgg/ssh-sync/pkg/models"
 )
 
 func GetToken() (string, error) {
-	user, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
-	jsonBytes, err := os.ReadFile(p)
-	if err != nil {
-		return "", err
-	}
-	var profile models.Profile
-	err = json.Unmarshal(jsonBytes, &profile)
+	profile, err := GetProfile()
 	if err != nil {
 		return "", err
 	}

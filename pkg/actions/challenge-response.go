@@ -27,12 +27,22 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
+	profile, err := utils.GetProfile()
+	if err != nil {
+		return err
+	}
 	dialer := ws.Dialer{}
 	dialer.Header = ws.HandshakeHeaderHTTP(http.Header{
 		"Authorization": []string{"Bearer " + token},
 	})
-	conn, _, _, err := dialer.Dial(context.Background(), "ws://localhost:3000/api/v1/setup/challenge")
+	wsUrl := profile.ServerUrl
+	if wsUrl.Scheme == "http" {
+		wsUrl.Scheme = "ws"
+	} else {
+		wsUrl.Scheme = "wss"
+	}
+	wsUrl.Path = "/api/v1/setup/challenge"
+	conn, _, _, err := dialer.Dial(context.Background(), wsUrl.String())
 	if err != nil {
 		return err
 	}
