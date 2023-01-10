@@ -283,7 +283,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(challengePhrase))
+	fmt.Printf("Please enter this phrase using the 'challenge-response' command on another machine: %s\n", string(challengePhrase))
 	waiting, err := wsutil.ReadServerBinary(conn)
 	if err != nil {
 		return err

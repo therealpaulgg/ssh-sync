@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
@@ -12,9 +13,17 @@ import (
 )
 
 func Reset(c *cli.Context) error {
+	setup, err := checkIfSetup()
+	if err != nil {
+		return err
+	}
+	if !setup {
+		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
+		return nil
+	}
 	fmt.Print("This will delete all ssh-sync data relating to this machine. Continue? (y/n): ")
 	var answer string
-	_, err := fmt.Scanln(&answer)
+	_, err = fmt.Scanln(&answer)
 	if err != nil {
 		return err
 	}
@@ -50,5 +59,6 @@ func Reset(c *cli.Context) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
+	// TODO delete files - should be deleted regardless.
 	return nil
 }
