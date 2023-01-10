@@ -50,5 +50,6 @@ func Reset(c *cli.Context) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
+	// TODO delete files - should be deleted regardless.
 	return nil
 }
