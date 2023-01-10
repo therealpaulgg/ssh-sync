@@ -31,7 +31,9 @@ func Reset(c *cli.Context) error {
 	}); err != nil {
 		return err
 	}
-	req, err := http.NewRequest("DELETE", "http://localhost:3000/api/v1/machines/", buf)
+	url := prof.ServerUrl
+	url.Path = "/api/v1/machines/"
+	req, err := http.NewRequest("DELETE", url.String(), buf)
 	if err != nil {
 		return err
 	}

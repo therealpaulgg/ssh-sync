@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -107,7 +108,7 @@ func getProfile() (*models.Profile, error) {
 	return &profile, nil
 }
 
-func saveProfile(username string, machineName string) error {
+func saveProfile(username string, machineName string, serverUrl url.URL) error {
 	// then the program will save the profile to ~/.ssh-sync/profile.json
 	user, err := user.Current()
 	if err != nil {
@@ -117,6 +118,7 @@ func saveProfile(username string, machineName string) error {
 	profile := models.Profile{
 		Username:    username,
 		MachineName: machineName,
+		ServerUrl:   serverUrl,
 	}
 	profileBytes, err := json.Marshal(profile)
 	if err != nil {
@@ -129,8 +131,10 @@ func saveProfile(username string, machineName string) error {
 	return nil
 }
 
-func checkIfAccountExists(username string) (bool, error) {
-	res, err := http.Get("http://localhost:3000/api/v1/users/" + username)
+func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
+	url := *serverUrl
+	url.Path = "/api/v1/users/" + username
+	res, err := http.Get(url.String())
 	if err != nil {
 		return false, err
 	}
@@ -161,7 +165,7 @@ func createMasterKey() ([]byte, error) {
 	return masterKey, nil
 }
 
-func newAccountSetup() error {
+func newAccountSetup(serverUrl *url.URL) error {
 	// ask user to pick a username.
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
@@ -169,7 +173,7 @@ func newAccountSetup() error {
 	if err != nil {
 		return err
 	}
-	exists, err := checkIfAccountExists(username)
+	exists, err := checkIfAccountExists(username, serverUrl)
 	if err != nil {
 		return err
 	}
@@ -190,7 +194,10 @@ func newAccountSetup() error {
 		return err
 	}
 	// then the program will save the profile to ~/.ssh-sync/profile.json
-	saveProfile(username, machineName)
+	err = saveProfile(username, machineName, *serverUrl)
+	if err != nil {
+		return err
+	}
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
 	pubkeyFile, err := getPubkeyFile()
@@ -211,7 +218,9 @@ func newAccountSetup() error {
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.WriteField("master_key", string(encryptedMasterKey))
 	multipartWriter.Close()
-	req, err := http.NewRequest("POST", "http://localhost:3000/api/v1/setup", &multipartBody)
+	setupUrl := *serverUrl
+	setupUrl.Path = "/api/v1/setup"
+	req, err := http.NewRequest("POST", setupUrl.String(), &multipartBody)
 	if err != nil {
 		return err
 	}
@@ -226,19 +235,23 @@ func newAccountSetup() error {
 	return nil
 }
 
-func existingAccountSetup() error {
+func existingAccountSetup(serverUrl *url.URL) error {
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
 	_, err := fmt.Scanln(&username)
 	if err != nil {
 		return err
 	}
-	exists, err := checkIfAccountExists(username)
+	exists, err := checkIfAccountExists(username, serverUrl)
 	if err != nil {
 		return err
 	}
 	if !exists {
 		return errors.New("user doesn't exist. try creating a new account")
+	}
+	profile, err := utils.GetProfile()
+	if err != nil {
+		return err
 	}
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
@@ -246,8 +259,15 @@ func existingAccountSetup() error {
 	if err != nil {
 		return err
 	}
+	wsUrl := profile.ServerUrl
+	if wsUrl.Scheme == "http" {
+		wsUrl.Scheme = "ws"
+	} else {
+		wsUrl.Scheme = "wss"
+	}
+	wsUrl.Path = "/api/v1/setup/existing"
 	dialer := ws.Dialer{}
-	conn, _, _, err := dialer.Dial(context.Background(), "ws://localhost:3000/api/v1/setup/existing")
+	conn, _, _, err := dialer.Dial(context.Background(), wsUrl.String())
 	if err != nil {
 		return err
 	}
@@ -279,7 +299,7 @@ func existingAccountSetup() error {
 	if err != nil {
 		return err
 	}
-	saveProfile(username, machineName)
+	saveProfile(username, machineName, *serverUrl)
 	f, err := getPubkeyFile()
 	if err != nil {
 		return err
@@ -306,25 +326,47 @@ func Setup(c *cli.Context) error {
 	// there will be a profile.json file containing the machine name and the username
 	// there will also be a keypair.
 	// check if setup has been completed before
-	// setup, err := checkIfSetup()
-	// if err != nil {
-	// 	return err
-	// }
-	// if setup {
-	// 	// if it has been completed, the user may want to restart.
-	// 	// if so this is a destructive operation and will result in the deletion of all saved data relating to ssh-sync.
-	// 	fmt.Println("ssh-sync has already been set up on this system.")
-	// 	return nil
-	// }
+	setup, err := checkIfSetup()
+	if err != nil {
+		return err
+	}
+	if setup {
+		// if it has been completed, the user may want to restart.
+		// if so this is a destructive operation and will result in the deletion of all saved data relating to ssh-sync.
+		fmt.Println("ssh-sync has already been set up on this system.")
+		return nil
+	}
 	// ask user if they already have an account on the ssh-sync server.
+	fmt.Print("Please enter your server address (http/https): ")
+	var serverAddress string
+	_, err = fmt.Scanln(&serverAddress)
+	if err != nil {
+		return err
+	}
+	serverUrl, err := url.Parse(serverAddress)
+	if err != nil {
+		return err
+	} else if serverUrl.Scheme == "" || serverUrl.Host == "" {
+		return errors.New("invalid server address")
+	} else if serverUrl.Scheme != "http" && serverUrl.Scheme != "https" {
+		return errors.New("server must use http or https")
+	}
+	if serverUrl.Scheme == "http" {
+		fmt.Println("WARNING: Your server is using HTTP. This is not secure. You should use HTTPS.")
+	}
+	// test connection to server
+	_, err = http.Get(serverUrl.String())
+	if err != nil {
+		return err
+	}
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
 	var answer string
-	_, err := fmt.Scanln(&answer)
+	_, err = fmt.Scanln(&answer)
 	if err != nil {
 		return err
 	}
 	if answer == "y" {
-		return existingAccountSetup()
+		return existingAccountSetup(serverUrl)
 	}
-	return newAccountSetup()
+	return newAccountSetup(serverUrl)
 }

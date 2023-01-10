@@ -29,11 +29,17 @@ func Upload(c *cli.Context) error {
 		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
 		return nil
 	}
+	profile, err := utils.GetProfile()
+	if err != nil {
+		return err
+	}
 	token, err := utils.GetToken()
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("GET", "http://localhost:3000/api/v1/data", nil)
+	url := profile.ServerUrl
+	url.Path = "/api/v1/setup/data"
+	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
 		return err
 	}
@@ -113,7 +119,9 @@ func Upload(c *cli.Context) error {
 		}
 	}
 	multipartWriter.Close()
-	req2, err := http.NewRequest("POST", "http://localhost:3000/api/v1/data", &multipartBody)
+	url2 := profile.ServerUrl
+	url2.Path = "/api/v1/data"
+	req2, err := http.NewRequest("POST", url2.String(), &multipartBody)
 	if err != nil {
 		return err
 	}

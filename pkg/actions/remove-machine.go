@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
@@ -12,9 +13,21 @@ import (
 )
 
 func RemoveMachine(c *cli.Context) error {
+	setup, err := checkIfSetup()
+	if err != nil {
+		return err
+	}
+	if !setup {
+		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
+		return nil
+	}
+	profile, err := utils.GetProfile()
+	if err != nil {
+		return err
+	}
 	fmt.Print("Please enter the machine name: ")
 	var answer string
-	_, err := fmt.Scanln(&answer)
+	_, err = fmt.Scanln(&answer)
 	if err != nil {
 		return err
 	}
@@ -24,7 +37,9 @@ func RemoveMachine(c *cli.Context) error {
 	}); err != nil {
 		return err
 	}
-	req, err := http.NewRequest("DELETE", "http://localhost:3000/api/v1/machines/", buf)
+	url := profile.ServerUrl
+	url.Path = "/api/v1/machines/"
+	req, err := http.NewRequest("DELETE", url.String(), buf)
 	if err != nil {
 		return err
 	}
