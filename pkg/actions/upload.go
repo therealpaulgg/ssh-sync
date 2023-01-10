@@ -38,7 +38,7 @@ func Upload(c *cli.Context) error {
 		return err
 	}
 	url := profile.ServerUrl
-	url.Path = "/api/v1/setup/data"
+	url.Path = "/api/v1/data"
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
 		return err
