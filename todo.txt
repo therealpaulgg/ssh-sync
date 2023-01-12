@@ -9,10 +9,7 @@ MUST HAVES:
 
 Nice to haves:
 - the live websocket code is scrappy, make it better
-- better error handling if possible (half the codebase is probably if err != nil)
 - Apparently you can have duplicate keys in a ssh config. Will have to not use a map[string]string and instead use a []keyValuePair or something.
 - IdentityFile - due to this duplicate attribute issue, probably forget about storing it in its own column in the database and just ensure that the CLI parses it carefully
 - add a space to each host entry in the ssh config generation
 - this is a zero knowledge app, but maybe there are some things we should do to prevent the client from just sending whatever the hell it wants to the server?
-
-
