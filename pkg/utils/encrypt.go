@@ -20,8 +20,7 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 	nonce := make([]byte, gcm.NonceSize())
-	_, err = rand.Read(nonce)
-	if err != nil {
+	if _, err := rand.Read(nonce); err != nil {
 		return nil, err
 	}
 	outBuf := gcm.Seal(nonce, nonce, plaintext, nil)

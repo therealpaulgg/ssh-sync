@@ -23,8 +23,7 @@ func Reset(c *cli.Context) error {
 	}
 	fmt.Print("This will delete all ssh-sync data relating to this machine. Continue? (y/n): ")
 	var answer string
-	_, err = fmt.Scanln(&answer)
-	if err != nil {
+	if _, err := fmt.Scanln(&answer); err != nil {
 		return err
 	}
 	if answer != "y" {

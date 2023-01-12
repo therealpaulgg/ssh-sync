@@ -52,8 +52,7 @@ func Upload(c *cli.Context) error {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	var dataDto dto.DataDto
-	err = json.NewDecoder(res.Body).Decode(&dataDto)
-	if err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&dataDto); err != nil {
 		return err
 	}
 	masterKey, err := utils.Decrypt(dataDto.MasterKey)
@@ -99,8 +98,7 @@ func Upload(c *cli.Context) error {
 			return err
 		}
 		w, _ := multipartWriter.CreateFormFile("keys[]", file.Name())
-		_, err = io.Copy(w, bytes.NewReader(encBytes))
-		if err != nil {
+		if _, err := io.Copy(w, bytes.NewReader(encBytes)); err != nil {
 			return err
 		}
 	}
@@ -113,8 +111,7 @@ func Upload(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(jsonBytes)
-		if err != nil {
+		if _, err := w.Write(jsonBytes); err != nil {
 			return err
 		}
 	}

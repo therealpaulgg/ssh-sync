@@ -16,10 +16,9 @@ func WriteConfig(hosts []models.Host) error {
 		return err
 	}
 	p := filepath.Join(user.HomeDir, "/.ssh-sync-data")
-	_, err = os.Stat(p)
-	if errors.Is(err, os.ErrNotExist) {
-		err = os.MkdirAll(p, 0700)
-		if err != nil {
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+
+		if err := os.MkdirAll(p, 0700); err != nil {
 			return err
 		}
 	}
@@ -29,19 +28,16 @@ func WriteConfig(hosts []models.Host) error {
 	}
 	defer file.Close()
 	for _, host := range hosts {
-		_, err = file.WriteString(fmt.Sprintf("Host %s\n", host.Host))
-		if err != nil {
+		if _, err := file.WriteString(fmt.Sprintf("Host %s\n", host.Host)); err != nil {
 			return err
 		}
 		if host.IdentityFile != "" {
-			_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, host.IdentityFile)))
-			if err != nil {
+			if _, err := file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, host.IdentityFile))); err != nil {
 				return err
 			}
 		}
 		for key, value := range host.Values {
-			_, err = file.WriteString(fmt.Sprintf("\t%s %s\n", key, value))
-			if err != nil {
+			if _, err := file.WriteString(fmt.Sprintf("\t%s %s\n", key, value)); err != nil {
 				return err
 			}
 		}
@@ -55,10 +51,8 @@ func WriteKey(key []byte, filename string) error {
 		return err
 	}
 	p := filepath.Join(user.HomeDir, "/.ssh-sync-data")
-	_, err = os.Stat(p)
-	if errors.Is(err, os.ErrNotExist) {
-		err = os.MkdirAll(p, 0700)
-		if err != nil {
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(p, 0700); err != nil {
 			return err
 		}
 	}
@@ -67,8 +61,7 @@ func WriteKey(key []byte, filename string) error {
 		return err
 	}
 	defer file.Close()
-	_, err = file.Write(key)
-	if err != nil {
+	if _, err := file.Write(key); err != nil {
 		return err
 	}
 	return nil

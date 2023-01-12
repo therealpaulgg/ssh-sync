@@ -49,8 +49,7 @@ func ChallengeResponse(c *cli.Context) error {
 	defer conn.Close()
 	fmt.Print("Please enter the challenge phrase: ")
 	var answer string
-	_, err = fmt.Scanln(&answer)
-	if err != nil {
+	if _, err := fmt.Scanln(&answer); err != nil {
 		return err
 	}
 	b, err := json.Marshal(dto.ChallengeResponseDto{
@@ -59,8 +58,7 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	err = wsutil.WriteClientBinary(conn, b)
-	if err != nil {
+	if err := wsutil.WriteClientBinary(conn, b); err != nil {
 		return err
 	}
 	// TODO - if connection is closed, close gracefully
@@ -69,8 +67,8 @@ func ChallengeResponse(c *cli.Context) error {
 		return err
 	}
 	var response dto.ChallengeSuccessEncryptedKeyDto
-	err = json.Unmarshal(keyData, &response)
-	if err != nil {
+
+	if err := json.Unmarshal(keyData, &response); err != nil {
 		return err
 	}
 	masterKey, err := utils.Decrypt(response.EncryptedMasterKey)
@@ -81,8 +79,8 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	err = wsutil.WriteClientBinary(conn, encryptedMasterKey2)
-	if err != nil {
+
+	if err := wsutil.WriteClientBinary(conn, encryptedMasterKey2); err != nil {
 		return err
 	}
 	fmt.Println("Challenge has been successfully completed and your new encrypted master key has been sent to server. You may now use ssh-sync on your new machine.")
