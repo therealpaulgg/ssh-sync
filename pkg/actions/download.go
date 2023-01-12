@@ -47,8 +47,7 @@ func Download(c *cli.Context) error {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	var data dto.DataDto
-	err = json.NewDecoder(res.Body).Decode(&data)
-	if err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
 		return err
 	}
 	masterKey, err := utils.Decrypt(data.MasterKey)
@@ -62,19 +61,18 @@ func Download(c *cli.Context) error {
 		}
 		data.Keys[i].Data = decryptedKey
 	}
-	err = utils.WriteConfig(lo.Map(data.SshConfig, func(config dto.SshConfigDto, i int) models.Host {
+	if err := utils.WriteConfig(lo.Map(data.SshConfig, func(config dto.SshConfigDto, i int) models.Host {
 		return models.Host{
 			Host:         config.Host,
 			Values:       config.Values,
 			IdentityFile: config.IdentityFile,
 		}
-	}))
-	if err != nil {
+	})); err != nil {
 		return err
 	}
 	for _, key := range data.Keys {
-		err = utils.WriteKey(key.Data, key.Filename)
-		if err != nil {
+
+		if err := utils.WriteKey(key.Data, key.Filename); err != nil {
 			return err
 		}
 	}

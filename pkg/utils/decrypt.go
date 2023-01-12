@@ -35,8 +35,7 @@ func DecryptWithMasterKey(b []byte, key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = decryptedBuf.Write(data)
-	if err != nil {
+	if _, err := decryptedBuf.Write(data); err != nil {
 		return nil, err
 	}
 	plaintext := decryptedBuf.Bytes()

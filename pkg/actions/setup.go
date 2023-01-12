@@ -38,8 +38,7 @@ func checkIfSetup() (bool, error) {
 		return false, err
 	}
 	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
-	_, err = os.Stat(p)
-	if err != nil {
+	if _, err := os.Stat(p); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
@@ -60,8 +59,7 @@ func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 		return nil, nil, err
 	}
 	p := filepath.Join(user.HomeDir, ".ssh-sync")
-	err = os.MkdirAll(p, 0700)
-	if err != nil {
+	if err := os.MkdirAll(p, 0700); err != nil {
 		return nil, nil, err
 	}
 	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
@@ -102,7 +100,7 @@ func getProfile() (*models.Profile, error) {
 		return nil, err
 	}
 	var profile models.Profile
-	if err = json.Unmarshal(dat, &profile); err != nil {
+	if err := json.Unmarshal(dat, &profile); err != nil {
 		return nil, err
 	}
 	return &profile, nil
@@ -124,8 +122,7 @@ func saveProfile(username string, machineName string, serverUrl url.URL) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(p, profileBytes, 0600)
-	if err != nil {
+	if err := os.WriteFile(p, profileBytes, 0600); err != nil {
 		return err
 	}
 	return nil
@@ -183,19 +180,16 @@ func newAccountSetup(serverUrl *url.URL) error {
 	// ask user to pick a name for this machine (default to current system name)
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
-	_, err = fmt.Scanln(&machineName)
-	if err != nil {
+	if _, err := fmt.Scanln(&machineName); err != nil {
 		return err
 	}
 	// then the program will generate a keypair, and upload the public key to the server
 	fmt.Println("Generating keypair...")
-	_, _, err = generateKey()
-	if err != nil {
+	if _, _, err := generateKey(); err != nil {
 		return err
 	}
 	// then the program will save the profile to ~/.ssh-sync/profile.json
-	err = saveProfile(username, machineName, *serverUrl)
-	if err != nil {
+	if err := saveProfile(username, machineName, *serverUrl); err != nil {
 		return err
 	}
 	var multipartBody bytes.Buffer
@@ -251,8 +245,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	}
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
-	_, err = fmt.Scanln(&machineName)
-	if err != nil {
+	if _, err := fmt.Scanln(&machineName); err != nil {
 		return err
 	}
 	wsUrl := *serverUrl
@@ -275,8 +268,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
-	err = wsutil.WriteClientBinary(conn, b)
-	if err != nil {
+	if err := wsutil.WriteClientBinary(conn, b); err != nil {
 		return err
 	}
 	challengePhrase, err := wsutil.ReadServerBinary(conn)
@@ -289,10 +281,9 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	fmt.Println(string(waiting))
-	fmt.Println("here 1")
 	fmt.Println("Generating keypair...")
-	_, _, err = generateKey()
-	if err != nil {
+
+	if _, _, err := generateKey(); err != nil {
 		return err
 	}
 	saveProfile(username, machineName, *serverUrl)
@@ -305,8 +296,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
-	err = wsutil.WriteClientBinary(conn, pubkey)
-	if err != nil {
+	if err := wsutil.WriteClientBinary(conn, pubkey); err != nil {
 		return err
 	}
 	waiting, err = wsutil.ReadServerBinary(conn)
@@ -335,8 +325,7 @@ func Setup(c *cli.Context) error {
 	// ask user if they already have an account on the ssh-sync server.
 	fmt.Print("Please enter your server address (http/https): ")
 	var serverAddress string
-	_, err = fmt.Scanln(&serverAddress)
-	if err != nil {
+	if _, err := fmt.Scanln(&serverAddress); err != nil {
 		return err
 	}
 	serverUrl, err := url.Parse(serverAddress)
@@ -351,14 +340,13 @@ func Setup(c *cli.Context) error {
 		fmt.Println("WARNING: Your server is using HTTP. This is not secure. You should use HTTPS.")
 	}
 	// test connection to server
-	_, err = http.Get(serverUrl.String())
-	if err != nil {
+
+	if _, err := http.Get(serverUrl.String()); err != nil {
 		return err
 	}
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
 	var answer string
-	_, err = fmt.Scanln(&answer)
-	if err != nil {
+	if _, err := fmt.Scanln(&answer); err != nil {
 		return err
 	}
 	if answer == "y" {

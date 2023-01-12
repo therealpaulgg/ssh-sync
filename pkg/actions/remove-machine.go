@@ -27,8 +27,7 @@ func RemoveMachine(c *cli.Context) error {
 	}
 	fmt.Print("Please enter the machine name: ")
 	var answer string
-	_, err = fmt.Scanln(&answer)
-	if err != nil {
+	if _, err := fmt.Scanln(&answer); err != nil {
 		return err
 	}
 	buf := new(bytes.Buffer)

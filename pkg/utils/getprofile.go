@@ -20,8 +20,7 @@ func GetProfile() (*models.Profile, error) {
 		return nil, err
 	}
 	var profile models.Profile
-	err = json.Unmarshal(jsonBytes, &profile)
-	if err != nil {
+	if err := json.Unmarshal(jsonBytes, &profile); err != nil {
 		return nil, err
 	}
 	return &profile, nil
