@@ -2,6 +2,10 @@ package dto
 
 import "github.com/google/uuid"
 
+type Dto interface {
+	DataDto | UserDto | UserMachineDto | ChallengeResponseDto | ChallengeSuccessEncryptedKeyDto | MessageDto
+}
+
 type DataDto struct {
 	ID        uuid.UUID      `json:"id"`
 	Username  string         `json:"username"`
@@ -47,13 +51,17 @@ type ChallengeSuccessEncryptedKeyDto struct {
 	PublicKey          []byte `json:"public_key"`
 }
 
-type ServerMessageDto[T any] struct {
+type MessageDto struct {
 	Message string `json:"message"`
-	Data    T      `json:"data"`
-	Error   bool   `json:"error"`
 }
 
-type ClientMessageDto[T any] struct {
+type ServerMessageDto[T Dto] struct {
+	Data         T      `json:"data"`
+	Error        bool   `json:"error"`
+	ErrorMessage string `json:"errorMessage"`
+}
+
+type ClientMessageDto[T Dto] struct {
 	Message string `json:"message"`
 	Data    T      `json:"data"`
 }
