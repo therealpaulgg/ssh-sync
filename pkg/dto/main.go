@@ -3,7 +3,7 @@ package dto
 import "github.com/google/uuid"
 
 type Dto interface {
-	DataDto | UserDto | UserMachineDto | ChallengeResponseDto | ChallengeSuccessEncryptedKeyDto | MessageDto
+	DataDto | UserDto | UserMachineDto | ChallengeResponseDto | ChallengeSuccessEncryptedKeyDto | MessageDto | EncryptedMasterKeyDto | MasterKeyDto
 }
 
 type DataDto struct {
