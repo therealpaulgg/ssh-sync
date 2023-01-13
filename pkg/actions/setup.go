@@ -261,14 +261,11 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	defer conn.Close()
-	dto := dto.UserMachineDto{}
-	dto.Username = username
-	dto.MachineName = machineName
-	b, err := json.Marshal(dto)
-	if err != nil {
-		return err
+	userMachine := dto.UserMachineDto{
+		Username:    username,
+		MachineName: machineName,
 	}
-	if err := wsutil.WriteClientBinary(conn, b); err != nil {
+	if err := utils.WriteClientMessage(&conn, userMachine); err != nil {
 		return err
 	}
 	challengePhrase, err := wsutil.ReadServerBinary(conn)
