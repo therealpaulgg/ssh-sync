@@ -52,13 +52,9 @@ func ChallengeResponse(c *cli.Context) error {
 	if _, err := fmt.Scanln(&answer); err != nil {
 		return err
 	}
-	b, err := json.Marshal(dto.ChallengeResponseDto{
+	if err := utils.WriteClientMessage(&conn, dto.ChallengeResponseDto{
 		Challenge: answer,
-	})
-	if err != nil {
-		return err
-	}
-	if err := wsutil.WriteClientBinary(conn, b); err != nil {
+	}); err != nil {
 		return err
 	}
 	// TODO - if connection is closed, close gracefully

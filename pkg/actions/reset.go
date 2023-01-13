@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
@@ -33,6 +35,7 @@ func Reset(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(dto.MachineDto{
 		Name: prof.MachineName,
@@ -58,6 +61,13 @@ func Reset(c *cli.Context) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
-	// TODO delete files - should be deleted regardless.
+	user, err := user.Current()
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(user.HomeDir, ".ssh-sync")
+	if err := os.RemoveAll(p); err != nil {
+		return err
+	}
 	return nil
 }

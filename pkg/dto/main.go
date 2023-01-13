@@ -47,7 +47,13 @@ type ChallengeSuccessEncryptedKeyDto struct {
 	PublicKey          []byte `json:"public_key"`
 }
 
-type ServerMessageDto struct {
+type ServerMessageDto[T any] struct {
 	Message string `json:"message"`
+	Data    T      `json:"data"`
 	Error   bool   `json:"error"`
+}
+
+type ClientMessageDto[T any] struct {
+	Message string `json:"message"`
+	Data    T      `json:"data"`
 }
