@@ -22,7 +22,6 @@ import (
 	"strconv"
 
 	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
@@ -268,18 +267,17 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	if err := utils.WriteClientMessage(&conn, userMachine); err != nil {
 		return err
 	}
-	challengePhrase, err := wsutil.ReadServerBinary(conn)
+	challengePhrase, err := utils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Please enter this phrase using the 'challenge-response' command on another machine: %s\n", string(challengePhrase))
-	waiting, err := wsutil.ReadServerBinary(conn)
+	fmt.Printf("Please enter this phrase using the 'challenge-response' command on another machine: %s\n", challengePhrase.Data.Message)
+	challengeSuccessResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(waiting))
+	fmt.Println(challengeSuccessResponse.Data.Message)
 	fmt.Println("Generating keypair...")
-
 	if _, _, err := generateKey(); err != nil {
 		return err
 	}
@@ -293,14 +291,14 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
-	if err := wsutil.WriteClientBinary(conn, pubkey); err != nil {
+	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkey}); err != nil {
 		return err
 	}
-	waiting, err = wsutil.ReadServerBinary(conn)
+	finalResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(waiting))
+	fmt.Println(finalResponse.Data.Message)
 	return nil
 }
 

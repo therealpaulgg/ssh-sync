@@ -2,13 +2,11 @@ package actions
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
@@ -57,26 +55,20 @@ func ChallengeResponse(c *cli.Context) error {
 	}); err != nil {
 		return err
 	}
+	response, err := utils.ReadServerMessage[dto.ChallengeSuccessEncryptedKeyDto](&conn)
 	// TODO - if connection is closed, close gracefully
-	keyData, err := wsutil.ReadServerBinary(conn)
 	if err != nil {
 		return err
 	}
-	var response dto.ChallengeSuccessEncryptedKeyDto
-
-	if err := json.Unmarshal(keyData, &response); err != nil {
-		return err
-	}
-	masterKey, err := utils.Decrypt(response.EncryptedMasterKey)
+	masterKey, err := utils.Decrypt(response.Data.EncryptedMasterKey)
 	if err != nil {
 		return err
 	}
-	encryptedMasterKey2, err := utils.EncryptWithPublicKey(masterKey, response.PublicKey)
+	encryptedMasterKey2, err := utils.EncryptWithPublicKey(masterKey, response.Data.PublicKey)
 	if err != nil {
 		return err
 	}
-
-	if err := wsutil.WriteClientBinary(conn, encryptedMasterKey2); err != nil {
+	if err := utils.WriteClientMessage(&conn, dto.EncryptedMasterKeyDto{EncryptedMasterKey: encryptedMasterKey2}); err != nil {
 		return err
 	}
 	fmt.Println("Challenge has been successfully completed and your new encrypted master key has been sent to server. You may now use ssh-sync on your new machine.")
