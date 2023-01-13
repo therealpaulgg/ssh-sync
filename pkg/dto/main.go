@@ -55,10 +55,18 @@ type MessageDto struct {
 	Message string `json:"message"`
 }
 
+type EncryptedMasterKeyDto struct {
+	EncryptedMasterKey []byte `json:"encrypted_master_key"`
+}
+
+type MasterKeyDto struct {
+	MasterKey []byte `json:"master_key"`
+}
+
 type ServerMessageDto[T Dto] struct {
 	Data         T      `json:"data"`
 	Error        bool   `json:"error"`
-	ErrorMessage string `json:"errorMessage"`
+	ErrorMessage string `json:"error_message"`
 }
 
 type ClientMessageDto[T Dto] struct {
