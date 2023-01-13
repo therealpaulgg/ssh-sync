@@ -46,3 +46,8 @@ type ChallengeSuccessEncryptedKeyDto struct {
 	EncryptedMasterKey []byte `json:"encrypted_master_key"`
 	PublicKey          []byte `json:"public_key"`
 }
+
+type ServerMessageDto struct {
+	Message string `json:"message"`
+	Error   bool   `json:"error"`
+}
