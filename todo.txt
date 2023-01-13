@@ -1,6 +1,4 @@
 MUST HAVES:
-- Better error messages for clients
-- ensure the 'live' code is robust from both ends (client, server)
 - data conflicts - how to resolve merging?
 - currently it is possible to upload a duplicate ssh_configs entry where host, identity_file, etc. are the same. Probably need to figure this one out
 - Allow users to delete certain keys or config entries
