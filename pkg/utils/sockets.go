@@ -36,6 +36,7 @@ func WriteClientMessage[T dto.Dto](conn *net.Conn, message T) error {
 	return nil
 }
 
+// TODO what if ServerMessageDto is an error??? how can we handle this on the client side?
 func ReadServerMessage[T dto.Dto](conn *net.Conn) (*dto.ServerMessageDto[T], error) {
 	connInstance := *conn
 	data, err := wsutil.ReadServerBinary(connInstance)

@@ -3,7 +3,7 @@ package dto
 import "github.com/google/uuid"
 
 type Dto interface {
-	DataDto | UserDto | UserMachineDto | ChallengeResponseDto | ChallengeSuccessEncryptedKeyDto | MessageDto | EncryptedMasterKeyDto | MasterKeyDto
+	DataDto | UserDto | UserMachineDto | ChallengeResponseDto | ChallengeSuccessEncryptedKeyDto | MessageDto | EncryptedMasterKeyDto | MasterKeyDto | PublicKeyDto
 }
 
 type DataDto struct {
@@ -61,6 +61,10 @@ type EncryptedMasterKeyDto struct {
 
 type MasterKeyDto struct {
 	MasterKey []byte `json:"master_key"`
+}
+
+type PublicKeyDto struct {
+	PublicKey []byte `json:"public_key"`
 }
 
 type ServerMessageDto[T Dto] struct {
