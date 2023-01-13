@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"net"
 
 	"github.com/gobwas/ws/wsutil"
@@ -36,7 +37,6 @@ func WriteClientMessage[T dto.Dto](conn *net.Conn, message T) error {
 	return nil
 }
 
-// TODO what if ServerMessageDto is an error??? how can we handle this on the client side?
 func ReadServerMessage[T dto.Dto](conn *net.Conn) (*dto.ServerMessageDto[T], error) {
 	connInstance := *conn
 	data, err := wsutil.ReadServerBinary(connInstance)
@@ -46,6 +46,9 @@ func ReadServerMessage[T dto.Dto](conn *net.Conn) (*dto.ServerMessageDto[T], err
 	var serverMessageDto dto.ServerMessageDto[T]
 	if err := json.Unmarshal(data, &serverMessageDto); err != nil {
 		return nil, err
+	}
+	if serverMessageDto.Error {
+		return &serverMessageDto, errors.New("error from server: " + serverMessageDto.ErrorMessage)
 	}
 	return &serverMessageDto, nil
 }
