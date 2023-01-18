@@ -56,7 +56,6 @@ func ChallengeResponse(c *cli.Context) error {
 		return err
 	}
 	response, err := utils.ReadServerMessage[dto.ChallengeSuccessEncryptedKeyDto](&conn)
-	// TODO - if connection is closed, close gracefully
 	if err != nil {
 		return err
 	}

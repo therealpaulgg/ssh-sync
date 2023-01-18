@@ -4,6 +4,7 @@ MUST HAVES:
 - Allow users to delete certain keys or config entries
 - test delete code more
 - add transactions
+- if EOF is received, need to have nicer error message. Also cleanup better - what if part way thru setup and EOF happens?
 
 Nice to haves:
 - the live websocket code is scrappy, make it better
