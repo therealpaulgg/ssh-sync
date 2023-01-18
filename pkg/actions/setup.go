@@ -85,7 +85,25 @@ func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	if err := pem.Encode(privOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
 		return nil, nil, err
 	}
+
 	return priv, pub, nil
+}
+
+func saveMasterKey(masterKey []byte) error {
+	user, err := user.Current()
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(user.HomeDir, ".ssh-sync")
+	masterOut, err := os.OpenFile(filepath.Join(p, "master_key"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer masterOut.Close()
+	if _, err := masterOut.Write(masterKey); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getProfile() (*models.Profile, error) {
@@ -187,6 +205,18 @@ func newAccountSetup(serverUrl *url.URL) error {
 	if _, _, err := generateKey(); err != nil {
 		return err
 	}
+	masterKey, err := createMasterKey()
+	if err != nil {
+		return err
+	}
+	encryptedMasterKey, err := utils.Encrypt(masterKey)
+	if err != nil {
+		return err
+	}
+	if err := saveMasterKey(encryptedMasterKey); err != nil {
+		return err
+	}
+
 	// then the program will save the profile to ~/.ssh-sync/profile.json
 	if err := saveProfile(username, machineName, *serverUrl); err != nil {
 		return err
@@ -197,19 +227,10 @@ func newAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
-	masterKey, err := createMasterKey()
-	if err != nil {
-		return err
-	}
-	encryptedMasterKey, err := utils.Encrypt(masterKey)
-	if err != nil {
-		return err
-	}
 	fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
 	io.Copy(fileWriter, pubkeyFile)
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
-	multipartWriter.WriteField("master_key", string(encryptedMasterKey))
 	multipartWriter.Close()
 	setupUrl := *serverUrl
 	setupUrl.Path = "/api/v1/setup"
@@ -292,6 +313,13 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkey}); err != nil {
+		return err
+	}
+	encryptedMasterKey, err := utils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)
+	if err != nil {
+		return err
+	}
+	if err := saveMasterKey(encryptedMasterKey.Data.EncryptedMasterKey); err != nil {
 		return err
 	}
 	finalResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)

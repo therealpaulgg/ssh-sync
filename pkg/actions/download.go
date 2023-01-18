@@ -50,7 +50,7 @@ func Download(c *cli.Context) error {
 	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
 		return err
 	}
-	masterKey, err := utils.Decrypt(data.MasterKey)
+	masterKey, err := utils.RetrieveMasterKey()
 	if err != nil {
 		return err
 	}
