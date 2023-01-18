@@ -38,7 +38,9 @@ For example, if Eve crafts a JWT that says `{"username": "Alice", "machineName":
 
 ### Master Key
 
-Each user will have a 'Master Key'. This will be a unique symmetric key. This symmetric key will be stored on the server, one copy for each keypair. For example, on the server, there would be `E_pubA(master_key)` and `E_pubB(master_key)`. All of the user's data will be stored on the server in an encrypted AES 256 GCM format. This data can only be decrypted with the master symmetric key, which can only be decrypted by the user using one of their user/machine keypairs.
+Each user will have a 'Master Key'. This will be a unique symmetric key. Each client will have the master key on their machine, encrypted with their public key. For example, on computer A there would be `E_pubA(master_key)` and on computer B `E_pubB(master_key)`. All of the user's data (SSH keys) will be stored on the server in an encrypted AES 256 GCM format. This data can only be decrypted with the master symmetric key, which can only be decrypted by the user using one of their user/machine keypairs.
+
+NOTE: the master key was previously stored on the server, but this was found to be redundant and unnecessary. It is practically just as secure to keep the master key on each machine (encrypted or even unencrypted theoretically). If someone has the public/private keypair, they would be able to easily retrieve the master key for that machine from the server anyways.
 
 #### Upload
 
