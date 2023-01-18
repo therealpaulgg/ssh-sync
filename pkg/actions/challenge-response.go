@@ -59,15 +59,15 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	masterKey, err := utils.Decrypt(response.Data.EncryptedMasterKey)
+	masterKey, err := utils.RetrieveMasterKey()
 	if err != nil {
 		return err
 	}
-	encryptedMasterKey2, err := utils.EncryptWithPublicKey(masterKey, response.Data.PublicKey)
+	encryptedMasterKey, err := utils.EncryptWithPublicKey(masterKey, response.Data.PublicKey)
 	if err != nil {
 		return err
 	}
-	if err := utils.WriteClientMessage(&conn, dto.EncryptedMasterKeyDto{EncryptedMasterKey: encryptedMasterKey2}); err != nil {
+	if err := utils.WriteClientMessage(&conn, dto.EncryptedMasterKeyDto{EncryptedMasterKey: encryptedMasterKey}); err != nil {
 		return err
 	}
 	fmt.Println("Challenge has been successfully completed and your new encrypted master key has been sent to server. You may now use ssh-sync on your new machine.")

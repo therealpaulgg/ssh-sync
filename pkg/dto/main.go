@@ -10,7 +10,6 @@ type DataDto struct {
 	ID        uuid.UUID      `json:"id"`
 	Username  string         `json:"username"`
 	Keys      []KeyDto       `json:"keys"`
-	MasterKey []byte         `json:"master_key"`
 	SshConfig []SshConfigDto `json:"ssh_config"`
 	Machines  []MachineDto   `json:"machines"`
 }
@@ -47,8 +46,7 @@ type ChallengeResponseDto struct {
 }
 
 type ChallengeSuccessEncryptedKeyDto struct {
-	EncryptedMasterKey []byte `json:"encrypted_master_key"`
-	PublicKey          []byte `json:"public_key"`
+	PublicKey []byte `json:"public_key"`
 }
 
 type MessageDto struct {
