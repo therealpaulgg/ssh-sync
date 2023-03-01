@@ -24,10 +24,7 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 	outBuf := gcm.Seal(nonce, nonce, plaintext, nil)
-	if err != nil {
-		return nil, err
-	}
-	return outBuf, err
+	return outBuf, nil
 }
 
 func Encrypt(b []byte) ([]byte, error) {
