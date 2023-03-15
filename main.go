@@ -38,6 +38,10 @@ func main() {
 				Action: actions.ChallengeResponse,
 			},
 			{
+				Name:   "list-machines",
+				Action: actions.ListMachines,
+			},
+			{
 				Name:   "remove-machine",
 				Action: actions.RemoveMachine,
 			},

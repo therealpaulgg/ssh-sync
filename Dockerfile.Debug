@@ -1,10 +1,10 @@
-# use ubuntu image as base and copy go code
-FROM ubuntu
-RUN apt update
-RUN apt install -y git golang
+FROM golang:buster
 RUN mkdir /app
 COPY ./pkg/ /app/pkg
 COPY . /app
 WORKDIR /app
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
 RUN go build -o /app/main /app/main.go
 CMD ["/bin/bash"]
