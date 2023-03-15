@@ -14,7 +14,7 @@ ChangesEnvironment=true
 AppId={{AB1F111C-F569-4D24-B9D4-2204FE2D9DB2}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -41,8 +41,8 @@ Source: "{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
-;[Tasks]
-;Name: modifypath; Description: &Add application directory to your environmental path; Flags: unchecked
+[Tasks]
+Name: modifypath; Description: &Add application directory to your environmental path;
 
 [Code]
 const

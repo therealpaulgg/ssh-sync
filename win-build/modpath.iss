@@ -170,9 +170,8 @@ var
 begin
 	taskname := ModPathName;
 	if CurStep = ssPostInstall then
-    ModPath();
-		;if IsTaskSelected(taskname) then
-		;	ModPath();
+	    if IsTaskSelected(taskname) then
+			ModPath();
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
