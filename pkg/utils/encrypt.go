@@ -3,7 +3,7 @@ package utils
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"math/rand"
+	"crypto/rand"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
@@ -20,7 +20,7 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 		return nil, err
 	}
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
+	if n, err := rand.Read(nonce); err != nil || n != len(nonce) {
 		return nil, err
 	}
 	outBuf := gcm.Seal(nonce, nonce, plaintext, nil)
