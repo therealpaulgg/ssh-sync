@@ -39,3 +39,12 @@ jobs:
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
         shell: powershell
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.19.7"
+      - name: Go Build
+        run: go build -o ssh-sync

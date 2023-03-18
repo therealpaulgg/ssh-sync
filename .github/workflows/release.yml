@@ -6,7 +6,70 @@ on:
     - '*'
 
 jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.19.7"
+      -
+        name: Go Build
+        run: go build -o ./win-build/ssh-sync.exe
+        shell: powershell
+      -
+        name: Inno Build
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
+        shell: powershell
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ssh-sync-setup
+          path: ./win-build/ssh-sync-setup.exe
+          retention-days: 5
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: ">=1.19.7"
+      - name: Go Build
+        run: go build -o ssh-sync
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ssh-sync
+          path: ./ssh-sync
+          retention-days: 5
   release:
+    needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Download all workflow run artifacts
@@ -14,5 +77,5 @@ jobs:
       - uses: actions/checkout@v2
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./win-build/ssh-sync-setup.exe"
+          artifacts: "./win-build/ssh-sync-setup.exe,ssh-sync"
 
