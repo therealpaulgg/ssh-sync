@@ -33,7 +33,39 @@ jobs:
     runs-on: windows-latest
     steps:
       -
-        name: Inno Build
-        uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
+        name: Checkout
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
         with:
-          filepath: ./win-build/setup.iss
+          go-version: ">=1.19.7"
+      -
+        name: Go Build
+        run: go build -o ./win-build/ssh-sync.exe
+        shell: powershell
+      -
+        name: Inno Build
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
+        shell: powershell
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ssh-sync-setup
+          path: ./win-build/ssh-sync-setup.exe
+          retention-days: 5
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate release tag
+        id: generate_release_tag
+        uses: amitsingh-007/next-release-tag@v1.0.0
+        with:
+          github_token: ${{ secrets.ACCESS_TOKEN }}
+          tag_prefix: 'v'
+      - name: Download all workflow run artifacts
+        uses: actions/download-artifact@v3
+      - uses: actions/checkout@v2
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "./win-build/ssh-sync-setup.exe"
+          bodyFile: "body.md"
