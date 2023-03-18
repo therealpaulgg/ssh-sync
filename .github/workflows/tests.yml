@@ -1,0 +1,31 @@
+name: Builds
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      -
+        name: Inno Build
+        uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
+        with:
+          filepath: .\win-build\setup.iss
