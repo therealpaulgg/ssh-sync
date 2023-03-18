@@ -1,9 +1,9 @@
 name: ci
 
-on: 
+on:
   push:
-    tags:
-    - '*'
+    branches:
+      - "main"
 
 jobs:
   build-docker:
