@@ -2,7 +2,6 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "ssh-sync"
-#define MyAppVersion "v0.2.2"
 #define MyAppPublisher "therealpaulgg"
 #define MyAppURL "https://github.com/therealpaulgg/ssh-sync"
 #define MyAppExeName "ssh-sync.exe"
