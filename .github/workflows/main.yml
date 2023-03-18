@@ -69,4 +69,4 @@ jobs:
         with:
           artifacts: "./win-build/ssh-sync-setup.exe"
           bodyFile: "body.md"
-          tag_: ${{ steps.generate_release_tag.outputs.release_tag }}
+          tag: ${{ steps.generate_release_tag.outputs.release_tag }}
