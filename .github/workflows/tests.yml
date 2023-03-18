@@ -27,5 +27,5 @@ jobs:
       -
         name: Inno Build
         run: |
-          "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" ".\win-build\setup.iss"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" ".\win-build\setup.iss"
         shell: powershell
