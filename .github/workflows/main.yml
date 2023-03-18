@@ -6,7 +6,7 @@ on:
       - "main"
 
 jobs:
-  build:
+  build-docker:
     runs-on: ubuntu-latest
     steps:
       -
@@ -29,3 +29,11 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      -
+        name: Inno Build
+        uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
+        with:
+          filepath: ./win-build/setup.iss
