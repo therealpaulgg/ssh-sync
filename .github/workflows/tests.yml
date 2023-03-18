@@ -28,6 +28,7 @@ jobs:
         name: Test
         run: ls
         shell: powershell
+      -
         name: Inno Build
         run: |
           & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
