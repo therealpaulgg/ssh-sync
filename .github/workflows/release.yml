@@ -51,7 +51,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ssh-sync-setup
-          path: ./win-build/ssh-sync-setup.exe
+          path: ./win-build/Output/ssh-sync-setup.exe
           retention-days: 5
   build-linux:
     runs-on: ubuntu-latest
@@ -72,10 +72,10 @@ jobs:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v3
-      - uses: actions/checkout@v2
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./win-build/ssh-sync-setup.exe,ssh-sync"
+          artifacts: "./ssh-sync-setup.exe,./ssh-sync"
 
