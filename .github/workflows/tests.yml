@@ -28,8 +28,8 @@ jobs:
         name: Checkout
         uses: actions/checkout@v3
       -
-        name: Test
-        run: ls
+        name: Go Build
+        run: go build -o ./win-build/ssh-sync.exe
         shell: powershell
       -
         name: Inno Build
