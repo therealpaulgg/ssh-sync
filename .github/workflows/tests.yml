@@ -26,6 +26,5 @@ jobs:
     steps:
       -
         name: Inno Build
-        uses: nadeemjazmawe/inno-setup-action-cli@v6.0.5
-        with:
-          filepath: .\win-build\setup.iss
+        run: |
+          "%pgoramfiles(x86)%\Inno Setup 6\iscc.exe" ".\win-build\setup.iss"
