@@ -77,5 +77,5 @@ jobs:
         uses: actions/download-artifact@v3
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup.exe,./ssh-sync"
+          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync"
 
