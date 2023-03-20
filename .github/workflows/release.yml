@@ -40,7 +40,7 @@ jobs:
           go-version: ">=1.19.7"
       -
         name: Go Build
-        run: go build -o ./win-build/ssh-sync.exe
+        run: go build -o ./win-build/ssh-sync.exe -ldflags "-X main.version=${{github.ref_name}}"
         shell: powershell
       -
         name: Inno Build
@@ -61,7 +61,7 @@ jobs:
         with:
           go-version: ">=1.19.7"
       - name: Go Build
-        run: go build -o ssh-sync
+        run: go build -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
