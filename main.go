@@ -8,10 +8,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var version string
+
 func main() {
 	app := &cli.App{
 		Name:        "ssh-sync",
-		Version:     "v0.2.4",
+		Version:     version,
 		Description: "Syncs your ssh keys to a remote server",
 		Commands: []*cli.Command{
 			{
