@@ -31,14 +31,18 @@ func WriteConfig(hosts []models.Host) error {
 		if _, err := file.WriteString(fmt.Sprintf("Host %s\n", host.Host)); err != nil {
 			return err
 		}
-		if host.IdentityFile != "" {
-			if _, err := file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, host.IdentityFile))); err != nil {
-				return err
+		if host.IdentityFiles != nil {
+			for _, identityFile := range host.IdentityFiles {
+				if _, err := file.WriteString(fmt.Sprintf("\t%s %s\n", "IdentityFile", filepath.Join(user.HomeDir, identityFile))); err != nil {
+					return err
+				}
 			}
 		}
 		for key, value := range host.Values {
-			if _, err := file.WriteString(fmt.Sprintf("\t%s %s\n", key, value)); err != nil {
-				return err
+			for _, item := range value {
+				if _, err := file.WriteString(fmt.Sprintf("\t%s %s\n", key, item)); err != nil {
+					return err
+				}
 			}
 		}
 	}

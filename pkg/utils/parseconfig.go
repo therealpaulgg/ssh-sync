@@ -36,12 +36,12 @@ func ParseConfig() ([]models.Host, error) {
 			}
 			currentHost = &models.Host{
 				Host:   strings.TrimPrefix(line, "Host "),
-				Values: make(map[string]string),
+				Values: make(map[string][]string),
 			}
 		} else if re.Match([]byte(line)) {
 			key := re.FindStringSubmatch(line)[1]
 			value := re.FindStringSubmatch(line)[2]
-			if key == "IdentityFile" {
+			if strings.ToLower(key) == "identityfile" {
 				homeDir := user.HomeDir
 				if runtime.GOOS == "windows" {
 					value = strings.ToLower(value)
@@ -49,9 +49,9 @@ func ParseConfig() ([]models.Host, error) {
 				}
 				identityFile := strings.TrimPrefix(value, homeDir)
 				normalizedIdentityFilePath := filepath.ToSlash(identityFile)
-				currentHost.IdentityFile = normalizedIdentityFilePath
+				currentHost.IdentityFiles = append(currentHost.IdentityFiles, normalizedIdentityFilePath)
 			} else {
-				currentHost.Values[key] = value
+				currentHost.Values[key] = append(currentHost.Values[key], value)
 			}
 
 		}

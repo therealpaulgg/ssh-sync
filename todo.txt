@@ -1,8 +1,6 @@
 MUST HAVES:
 - data conflicts - how to resolve merging?
-- currently it is possible to upload a duplicate ssh_configs entry where host, identity_file, etc. are the same. Probably need to figure this one out
 - Allow users to delete certain keys or config entries
-- allow users to obtain a list of their machines
 - test delete code more
 - if EOF is received, need to have nicer error message. Also cleanup better - what if part way thru setup and EOF happens?
 - server seems to sometimes panic when websocket connection gets closed in a strange way.

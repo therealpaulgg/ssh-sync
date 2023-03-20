@@ -22,9 +22,9 @@ type KeyDto struct {
 }
 
 type SshConfigDto struct {
-	Host         string            `json:"host"`
-	Values       map[string]string `json:"values"`
-	IdentityFile string            `json:"identity_file"`
+	Host          string              `json:"host"`
+	Values        map[string][]string `json:"values"`
+	IdentityFiles []string            `json:"identity_files"`
 }
 
 type MachineDto struct {
