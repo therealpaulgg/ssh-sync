@@ -63,9 +63,9 @@ func Download(c *cli.Context) error {
 	}
 	if err := utils.WriteConfig(lo.Map(data.SshConfig, func(config dto.SshConfigDto, i int) models.Host {
 		return models.Host{
-			Host:         config.Host,
-			Values:       config.Values,
-			IdentityFile: config.IdentityFile,
+			Host:          config.Host,
+			Values:        config.Values,
+			IdentityFiles: config.IdentityFiles,
 		}
 	})); err != nil {
 		return err
@@ -76,5 +76,6 @@ func Download(c *cli.Context) error {
 			return err
 		}
 	}
+	fmt.Println("Successfully downloaded keys.")
 	return nil
 }
