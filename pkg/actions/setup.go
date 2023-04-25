@@ -197,6 +197,7 @@ func newAccountSetup(serverUrl *url.URL) error {
 	// ask user to pick a name for this machine (default to current system name)
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
+	// need to not use scanln https://stackoverflow.com/questions/43843477/scanln-in-golang-doesnt-accept-whitespace
 	if _, err := fmt.Scanln(&machineName); err != nil {
 		return err
 	}
