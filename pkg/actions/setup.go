@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/ecdsa"
@@ -180,10 +181,11 @@ func createMasterKey() ([]byte, error) {
 }
 
 func newAccountSetup(serverUrl *url.URL) error {
+	scanner := bufio.NewScanner(os.Stdin)
 	// ask user to pick a username.
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
-	_, err := fmt.Scanln(&username)
+	err := utils.ReadLineFromStdin(scanner, &username)
 	if err != nil {
 		return err
 	}
@@ -197,8 +199,7 @@ func newAccountSetup(serverUrl *url.URL) error {
 	// ask user to pick a name for this machine (default to current system name)
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
-	// need to not use scanln https://stackoverflow.com/questions/43843477/scanln-in-golang-doesnt-accept-whitespace
-	if _, err := fmt.Scanln(&machineName); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &machineName); err != nil {
 		return err
 	}
 	// then the program will generate a keypair, and upload the public key to the server
@@ -251,9 +252,10 @@ func newAccountSetup(serverUrl *url.URL) error {
 }
 
 func existingAccountSetup(serverUrl *url.URL) error {
+	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
-	_, err := fmt.Scanln(&username)
+	err := utils.ReadLineFromStdin(scanner, &username)
 	if err != nil {
 		return err
 	}
@@ -266,7 +268,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 	}
 	fmt.Print("Please enter a name for this machine: ")
 	var machineName string
-	if _, err := fmt.Scanln(&machineName); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &machineName); err != nil {
 		return err
 	}
 	wsUrl := *serverUrl
@@ -332,6 +334,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 }
 
 func Setup(c *cli.Context) error {
+	scanner := bufio.NewScanner(os.Stdin)
 	// all files will be stored in ~/.ssh-sync
 	// there will be a profile.json file containing the machine name and the username
 	// there will also be a keypair.
@@ -349,7 +352,7 @@ func Setup(c *cli.Context) error {
 	// ask user if they already have an account on the ssh-sync server.
 	fmt.Print("Please enter your server address (http/https): ")
 	var serverAddress string
-	if _, err := fmt.Scanln(&serverAddress); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &serverAddress); err != nil {
 		return err
 	}
 	serverUrl, err := url.Parse(serverAddress)
@@ -370,7 +373,7 @@ func Setup(c *cli.Context) error {
 	}
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
 	var answer string
-	if _, err := fmt.Scanln(&answer); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
 	if answer == "y" {
