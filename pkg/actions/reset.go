@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -24,8 +25,9 @@ func Reset(c *cli.Context) error {
 		return nil
 	}
 	fmt.Print("This will delete all ssh-sync data relating to this machine. Continue? (y/n): ")
+	scanner := bufio.NewScanner(os.Stdin)
 	var answer string
-	if _, err := fmt.Scanln(&answer); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
 	if answer != "y" {

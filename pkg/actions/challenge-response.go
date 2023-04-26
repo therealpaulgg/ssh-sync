@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net/http"
@@ -46,8 +47,9 @@ func ChallengeResponse(c *cli.Context) error {
 	}
 	defer conn.Close()
 	fmt.Print("Please enter the challenge phrase: ")
+	scanner := bufio.NewScanner(os.Stdin)
 	var answer string
-	if _, err := fmt.Scanln(&answer); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
 	if err := utils.WriteClientMessage(&conn, dto.ChallengeResponseDto{

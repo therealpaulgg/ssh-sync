@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -26,8 +27,9 @@ func RemoveMachine(c *cli.Context) error {
 		return err
 	}
 	fmt.Print("Please enter the machine name: ")
+	scanner := bufio.NewScanner(os.Stdin)
 	var answer string
-	if _, err := fmt.Scanln(&answer); err != nil {
+	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
 	buf := new(bytes.Buffer)
