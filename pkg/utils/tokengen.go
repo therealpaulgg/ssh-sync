@@ -18,8 +18,8 @@ func GetToken() (string, error) {
 	}
 	builder := jwt.NewBuilder()
 	builder.Issuer("github.com/therealpaulgg/ssh-sync")
-	builder.IssuedAt(time.Now())
-	builder.Expiration(time.Now().Add(time.Minute))
+	builder.IssuedAt(time.Now().Add(-1 * time.Minute))
+	builder.Expiration(time.Now().Add(2 * time.Minute))
 	builder.Claim("username", profile.Username)
 	builder.Claim("machine", profile.MachineName)
 	tok, err := builder.Build()
