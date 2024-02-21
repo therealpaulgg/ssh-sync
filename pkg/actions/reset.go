@@ -61,7 +61,15 @@ func Reset(c *cli.Context) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		fmt.Printf("unexpected status code when attempting to delete machine from endpoint: %d\n Continue with deletion? (y/n): ", resp.StatusCode)
+		scanner := bufio.NewScanner(os.Stdin)
+		var answer string
+		if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
+			return err
+		}
+		if answer != "y" {
+			return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
 	}
 	user, err := user.Current()
 	if err != nil {
