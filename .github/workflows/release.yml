@@ -84,6 +84,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - uses: tgymnich/fork-sync@v1.8
+        with:
+          owner: therealpaulgg
+          repo: winget-pkgs
+          base: master
+          head: master
       - name: Install winget
         uses: Cyberboss/install-winget@v1
       - name: Install wingetcreate
