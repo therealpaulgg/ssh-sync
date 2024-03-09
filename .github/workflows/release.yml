@@ -84,12 +84,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: tgymnich/fork-sync@v1.8
+      - name: Pull (Fast-Forward) upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v2.1
         with:
-          owner: therealpaulgg
-          repo: winget-pkgs
-          base: master
-          head: master
+          upstream_repository: microsoft/winget-pkgs
+          upstream_branch: master
+          target_branch: master
+          git_pull_args: --ff-only                    # optional arg use, defaults to simple 'pull'
+          github_token: ${{ secrets.ACCESS_TOKEN }}
       - name: Install winget
         uses: Cyberboss/install-winget@v1
       - name: Install wingetcreate
