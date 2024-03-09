@@ -78,4 +78,20 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync"
+  update-winget-manifest:
+    needs: [build-docker, build-windows, build-linux, release]
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install wingetcreate
+        run: winget install --id=Microsoft.WingetCreate --exact --accept-package-agreements --accept-source-agreements
+      - name: Update winget manifest
+        env:
+          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          wingetcreate update therealpaulgg.ssh-sync --version $tag --token $ACCESS_TOKEN --url https://github.com/therealpaulgg/ssh-sync/releases/download/$tag/ssh-sync-setup.exe --submit
+        shell: powershell
+
 
