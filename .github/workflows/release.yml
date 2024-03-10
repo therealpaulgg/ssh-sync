@@ -11,7 +11,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -34,8 +34,8 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ">=1.19.7"
       -
@@ -48,7 +48,7 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
         shell: powershell
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ssh-sync-setup
           path: ./win-build/Output/ssh-sync-setup.exe
@@ -56,14 +56,14 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ">=1.19.7"
       - name: Go Build
         run: go build -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ssh-sync
           path: ./ssh-sync
@@ -72,7 +72,7 @@ jobs:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Download all workflow run artifacts
         uses: actions/download-artifact@v3
       - uses: ncipollo/release-action@v1
@@ -82,18 +82,8 @@ jobs:
     needs: [build-docker, build-windows, build-linux, release]
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install winget
-        uses: Cyberboss/install-winget@v1
-      - name: Install wingetcreate
-        run: winget install --id=Microsoft.WingetCreate --exact --accept-package-agreements --accept-source-agreements
-      - name: Update winget manifest
-        env:
-          ACCESS_TOKEN_CLASSIC: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
-        run: |
-          $tag = "${{ github.ref_name }}"
-          wingetcreate update therealpaulgg.ssh-sync --version $tag --token "$env:ACCESS_TOKEN_CLASSIC" -u https://github.com/therealpaulgg/ssh-sync/releases/download/$tag/ssh-sync-setup.exe --submit
-        shell: powershell
-
-
+      - uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: therealpaulgg.ssh-sync
+          max-versions-to-keep: 5 # keep only latest 5 versions
+          token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
