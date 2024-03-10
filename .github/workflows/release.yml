@@ -84,6 +84,13 @@ jobs:
         run: |
           fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync=/usr/local/bin/ssh-sync
+      - name: Upload Linux Packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: packages
+          path: |
+            *.deb
+            *.rpm
   release:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
