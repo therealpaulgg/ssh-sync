@@ -100,7 +100,7 @@ jobs:
         uses: actions/download-artifact@v3
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,*.deb,*.rpm"
+          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
   update-winget-manifest:
     needs: [build-docker, build-windows, build-linux, release]
     runs-on: windows-latest
