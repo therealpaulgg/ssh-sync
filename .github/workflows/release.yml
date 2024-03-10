@@ -68,6 +68,22 @@ jobs:
           name: ssh-sync
           path: ./ssh-sync
           retention-days: 5
+      - name: Install FPM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
+          sudo gem install --no-document fpm
+
+      - name: Create a .deb package
+        run: |
+          fpm -s dir -t deb -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --deb-no-default-config-files \
+          ./ssh-sync=/usr/local/bin/ssh-sync
+
+      - name: Create an .rpm package
+        run: |
+          fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          ./ssh-sync=/usr/local/bin/ssh-sync
   release:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
@@ -77,7 +93,7 @@ jobs:
         uses: actions/download-artifact@v3
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync"
+          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,*.deb,*.rpm"
   update-winget-manifest:
     needs: [build-docker, build-windows, build-linux, release]
     runs-on: windows-latest
