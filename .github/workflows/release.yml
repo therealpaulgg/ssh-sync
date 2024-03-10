@@ -90,10 +90,10 @@ jobs:
         run: winget install --id=Microsoft.WingetCreate --exact --accept-package-agreements --accept-source-agreements
       - name: Update winget manifest
         env:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          ACCESS_TOKEN_CLASSIC: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
         run: |
           $tag = "${{ github.ref_name }}"
-          wingetcreate update therealpaulgg.ssh-sync --version $tag --token "$env:ACCESS_TOKEN" -u https://github.com/therealpaulgg/ssh-sync/releases/download/$tag/ssh-sync-setup.exe --submit
+          wingetcreate update therealpaulgg.ssh-sync --version $tag --token "$env:ACCESS_TOKEN_CLASSIC" -u https://github.com/therealpaulgg/ssh-sync/releases/download/$tag/ssh-sync-setup.exe --submit
         shell: powershell
 
 
