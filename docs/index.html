@@ -1,0 +1,50 @@
+<h1 id="ssh-sync">SSH Sync</h1>
+<p>A CLI application to sync SSH keys along with a SSH configuration between machines on-demand.</p>
+<h2 id="high-level-concept">High-Level Concept</h2>
+<p>You have a computer which has SSH keys and configuration on them, and on a secondary machine you would like these keys so you are able to access your servers from another machine. This often involves copy-pasting files and also rewriting an SSH configuration file because file paths change, or the operating system changes. This can be quite tedious. This program aims to replace the manual steps involved by allowing a secure method of transferring keys and keeping them all synced in a remote server.</p>
+<h2 id="why-not-p2p-">Why not P2P?</h2>
+<p>P2P was considered (and may still be done at a later  date) but ultimately dismissed because every key sync request would have to involve two machines, which would get tedious quickly. The main idea is a transaction involving two machines at the same time would only have to be done once (to allow a new machine access to a user&#39;s keys). After this point, the new machine can communicate to the server freely, uploading and downloading new keys. A P2P implementation would mean that a machine would have to do a &#39;handshake&#39; with another machine each time. There would also be no central source to keep key data synchronized.</p>
+<h1 id="technical-details-crypto-">Technical Details (Crypto)</h1>
+<h2 id="initial-setup">Initial Setup</h2>
+<p>On initial setup, a user will be asked to provide a username and name for the current machine. A ECDSA keypair will also be created, and the user&#39;s public key will be uploaded to the server, corresponding to the username and machine name. From this point on, the user will be able to communicate to the server and upload/download keys, as well as config data.</p>
+<h2 id="communication-to-server">Communication to Server</h2>
+<h3 id="jwt-for-requests">JWT for Requests</h3>
+<p>All requests to the server (besides initial setup) will be done with a JWT. This JWT will be crafted on the client-side. It will be crafted using the ES512 algorithm, using the user&#39;s private key. The token will then be sent to the server, and validated with the user&#39;s public key. The crafted token needs to contain the following:</p>
+<ul>
+<li>Username</li>
+<li>Machine Name</li>
+</ul>
+<p>the server will then look up the public key corresponding to the username and machine name provided, and attempt to validate the signature. It will be impossible for someone to forge a JWT for a particular user/machine pair because it would require the private key.</p>
+<p>For example, if Eve crafts a JWT that says <code>{&quot;username&quot;: &quot;Alice&quot;, &quot;machineName&quot;: &quot;my-computer&quot;}</code>, the server will attempt to verify the JWT using Alice&#39;s &#39;my-computer&#39; keypair. Eve cannot impersonate Alice unless she gets her hands on Alice&#39;s private key.</p>
+<h2 id="storing-keys-on-the-server-securely">Storing Keys On The Server Securely</h2>
+<h3 id="master-key">Master Key</h3>
+<p>Each user will have a &#39;Master Key&#39;. This will be a unique symmetric key. This symmetric key will be stored on the server, one copy for each keypair. For example, on the server, there would be <code>E_pubA(master_key)</code> and <code>E_pubB(master_key)</code>. All of the user&#39;s data will be stored on the server in an encrypted AES 256 GCM format. This data can only be decrypted with the master symmetric key, which can only be decrypted by the user using one of their user/machine keypairs.</p>
+<h4 id="upload">Upload</h4>
+<p>Whenever the user wants to upload new data, the server will send the encrypted master key. The user will then decrypt the master key, and send encrypted keys to the server. </p>
+<p>Server sends: <code>E_pubMachine(master_key)</code></p>
+<p>Machine decrypts master key, <code>D_privMachine(E_pubMachine(master_key))</code></p>
+<p>Machine encrypts keys with <code>master_key</code> and also signs the data.</p>
+<p><code>E_privMachine(E_masterKey(plaintext))</code></p>
+<p>Server receives this data and validates the signature:</p>
+<p><code>D_pubMachine(ciphertext)</code></p>
+<p>The server will then store this <code>ciphertext</code>.</p>
+<h4 id="download">Download</h4>
+<p>Whenever the user wants to download data, the server will send all the user&#39;s data in encrypted format, as well as the encrypted master key.</p>
+<p>The user, once it receives the data, will decrypt the master key using their private key, and then decrypt the ciphertext.</p>
+<p>Server sends: <code>E_pubMachine(ciphertext), E_pubMachine(master_key)</code></p>
+<p>Machine decrypts master key, <code>D_privMachine(E_pubMachine(master_key))</code></p>
+<p>Machine decrypts ciphertext.</p>
+<p><code>D_masterKey(D_privMachine(ciphertext))</code></p>
+<h2 id="adding-new-machines">Adding New Machines</h2>
+<p>Adding a new machine will require one of the user&#39;s other machines. The new machine will make a request to the server to be added. The server will then respond with some sort of challenge, requesting that the user enters a phrase on one of their old machines. Once the user enters the phrase on their old machine, the server will then allow them to upload a public keypair so they can do communication with the server. The old machine will need to be involved a little longer so that it can decrypt the master key, and upload a new master key using this new machine&#39;s public key. Here is the full process laid out:</p>
+<p>Machine B requests to be added to allowed clients<br>Server gives Machine B a challenge phrase which must be entered on Machine A<br>Challenge phrase is entered on Machine A.  Machine A awaits response from server (Machine B&#39;s public key)<br>Machine B generates keypair and uploads public key to server.<br>Server saves B&#39;s public key and then sends <code>E_aPub(master_key)</code> &amp; B&#39;s public key to Machine A.<br>Machine A does <code>D_aPriv(enc_master_key)</code>, and then sends <code>E_bPub(master_key)</code> to the server.<br>Server then saves this new encrypted master key.</p>
+<h1 id="other-technical-details">Other Technical Details</h1>
+<h2 id="ssh-config-parsing">SSH Config Parsing</h2>
+<p>Part of the syncing process will be where the program parses a user&#39;s SSH config file, and then sends the parsed format over to the server. Other machines, when syncing, will be able to have new config files generated for them based on what is in the server (and the CLI will handle changing user directories &amp; OS changes).</p>
+<h2 id="data-conflicts">Data Conflicts</h2>
+<p>TODO: after parsing SSH config, if there are duplicate entries, attempt to merge, but with conflicts, ask user how to resolve.</p>
+<p>TODO: what if duplicate keys get uploaded? ask user to replace/skip</p>
+<h1 id="p2p-concept">P2P Concept</h1>
+<p>If P2P was to be implemented, a lot of the crypto needed for the server implementation would be unnecessary. This is how a request would probably go:</p>
+<p>Machine B wants Machine A&#39;s keys and config.<br>Machine A challenges Machine B with a phrase.<br>Machine B responds to challenge, and sends its public key.<br>Assuming challenge is passed, Machine A encrypts its data using EC-DH-A256GCM (Machine B public key) and sends it over to Machine B.<br>Machine B would receive the data, decrypt it, and the program would manage things as necessary.</p>
+<p>All the other functionality of the program (i.e SSH config parser) would remain the same.</p>
