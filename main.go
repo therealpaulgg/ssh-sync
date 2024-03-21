@@ -13,6 +13,7 @@ var version string
 func main() {
 	app := &cli.App{
 		Name:        "ssh-sync",
+		Usage:       "sync your ssh keys to a remote server",
 		Version:     version,
 		Description: "Syncs your ssh keys to a remote server",
 		Commands: []*cli.Command{

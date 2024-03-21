@@ -108,5 +108,6 @@ jobs:
       - uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: therealpaulgg.ssh-sync
-          max-versions-to-keep: 5 # keep only latest 5 versions
+          version: ${{ github.ref_name }}
+          release-tag: ${{ github.ref_name }}
           token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
