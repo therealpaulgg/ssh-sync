@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -68,7 +67,7 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	var hosts []models.Host
+	hosts := []models.Host{}
 	for _, file := range data {
 		if file.IsDir() || file.Name() == "authorized_keys" {
 			continue
@@ -84,7 +83,7 @@ func Upload(c *cli.Context) error {
 			return err
 		}
 		// read file into buffer
-		data, err := ioutil.ReadAll(f)
+		data, err := io.ReadAll(f)
 		if err != nil {
 			return err
 		}

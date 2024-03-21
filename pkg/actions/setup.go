@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -311,7 +310,7 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	defer f.Close()
-	pubkey, err := ioutil.ReadAll(f)
+	pubkey, err := io.ReadAll(f)
 	if err != nil {
 		return err
 	}
