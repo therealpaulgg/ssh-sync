@@ -349,26 +349,42 @@ func Setup(c *cli.Context) error {
 		fmt.Println("ssh-sync has already been set up on this system.")
 		return nil
 	}
-	// ask user if they already have an account on the ssh-sync server.
-	fmt.Print("Please enter your server address (http/https): ")
-	var serverAddress string
-	if err := utils.ReadLineFromStdin(scanner, &serverAddress); err != nil {
+	fmt.Println("We recommend for the security-conscious that you use your own self-hosted ssh-sync-server.")
+	fmt.Println("If you don't have one, you'll be able to use the one hosted at https://server.sshsync.io.")
+	fmt.Print("Do you want to use your own server? (y/n): ")
+	var useOwnServer string
+	if err := utils.ReadLineFromStdin(scanner, &useOwnServer); err != nil {
 		return err
 	}
-	serverUrl, err := url.Parse(serverAddress)
-	if err != nil {
-		return err
-	} else if serverUrl.Scheme == "" || serverUrl.Host == "" {
-		return errors.New("invalid server address")
-	} else if serverUrl.Scheme != "http" && serverUrl.Scheme != "https" {
-		return errors.New("server must use http or https")
+	var serverUrl *url.URL
+	if useOwnServer == "n" {
+		serverUrl, err = url.Parse("https://server.sshsync.io")
+		if err != nil {
+			return err
+		}
+	} else {
+		// ask user if they already have an account on the ssh-sync server.
+		fmt.Print("Please enter your server address (http/https): ")
+		var serverAddress string
+		if err := utils.ReadLineFromStdin(scanner, &serverAddress); err != nil {
+			return err
+		}
+		serverUrl, err := url.Parse(serverAddress)
+		if err != nil {
+			return err
+		} else if serverUrl.Scheme == "" || serverUrl.Host == "" {
+			return errors.New("invalid server address")
+		} else if serverUrl.Scheme != "http" && serverUrl.Scheme != "https" {
+			return errors.New("server must use http or https")
+		}
+		if serverUrl.Scheme == "http" {
+			fmt.Println("WARNING: Your server is using HTTP. This is not secure. You should use HTTPS.")
+		}
 	}
-	if serverUrl.Scheme == "http" {
-		fmt.Println("WARNING: Your server is using HTTP. This is not secure. You should use HTTPS.")
-	}
-	// test connection to server
 
+	// test connection to server
 	if _, err := http.Get(serverUrl.String()); err != nil {
+		fmt.Println("It seems we are unable to connect to this ssh-sync server at the moment. Please check your configuration and try again.")
 		return err
 	}
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
