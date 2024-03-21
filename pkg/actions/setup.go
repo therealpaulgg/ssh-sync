@@ -369,7 +369,7 @@ func Setup(c *cli.Context) error {
 		if err := utils.ReadLineFromStdin(scanner, &serverAddress); err != nil {
 			return err
 		}
-		serverUrl, err := url.Parse(serverAddress)
+		serverUrl, err = url.Parse(serverAddress)
 		if err != nil {
 			return err
 		} else if serverUrl.Scheme == "" || serverUrl.Host == "" {
