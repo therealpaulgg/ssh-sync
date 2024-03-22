@@ -1,0 +1,31 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+      with:
+        repository: 'therealpaulgg/homebrew-ssh-sync'
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update Homebrew formula
+      run: |
+        # Example commands to update formula
+        # You'll need a script that updates your formula file with the new version and sha256
+        # This might involve downloading the release tarball, calculating its sha256, and updating the formula file accordingly
+        sh update_formula.sh
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -am "Update formula to version ${{ github.event.release.tag_name }}"
+        git push
