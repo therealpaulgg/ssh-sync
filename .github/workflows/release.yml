@@ -101,13 +101,3 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
-  update-winget-manifest:
-    needs: [build-docker, build-windows, build-linux, release]
-    runs-on: windows-latest
-    steps:
-      - uses: vedantmgoyal2009/winget-releaser@v2
-        with:
-          identifier: therealpaulgg.ssh-sync
-          version: ${{ github.ref_name }}
-          release-tag: ${{ github.ref_name }}
-          token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
