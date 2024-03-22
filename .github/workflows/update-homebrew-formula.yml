@@ -22,7 +22,8 @@ jobs:
 
     - name: Update Homebrew formula
       run: |
-        sh ./software/.github/workflows/update_formula.sh
+        cd software
+        sh ./.github/workflows/update_formula.sh
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

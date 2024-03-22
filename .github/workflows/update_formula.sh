@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# Replace these variables with your actual data
-GITHUB_REPO="therealpaulgg/ssh-sync"  # Your GitHub username and repository name
-FORMULA_PATH="Formula/ssh-sync.rb"  # Path to your formula in the tap
-TAP_REPO="therealpaulgg/homebrew-ssh-sync"  # Your tap repository
+TAP_PATH="../homebrew-tap"
+cd "$TAP_PATH"
+
+GITHUB_REPO="therealpaulgg/ssh-sync"
+FORMULA_PATH="Formula/ssh-sync.rb"
+TAP_REPO="therealpaulgg/homebrew-ssh-sync"
 
 # Fetch the latest release data from GitHub
 LATEST_RELEASE=$(curl -s "https://api.github.com/repos/$GITHUB_REPO/releases/latest")
