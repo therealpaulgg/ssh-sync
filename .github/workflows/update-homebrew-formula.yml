@@ -23,6 +23,7 @@ jobs:
     - name: Update Homebrew formula
       run: |
         cd homebrew-tap
+        ls
 
         GITHUB_REPO="therealpaulgg/ssh-sync"
         FORMULA_PATH="Formula/ssh-sync.rb"
