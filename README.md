@@ -7,6 +7,17 @@ Also part of this project:
 [https://github.com/therealpaulgg/ssh-sync-server](https://github.com/therealpaulgg/ssh-sync-server)  
 [https://github.com/therealpaulgg/ssh-sync-db](https://github.com/therealpaulgg/ssh-sync-db)
 
+## Diagram
+
+This diagram depicts the following:
+
+1. Initial user setup with server
+2. Sequence diagram illustrating a user configuring a new PC
+3. Authenticated download request
+4. Authenticated upload request
+
+![svg-of-ssh-sync-architecture](./diagrams.svg)
+
 ## High-Level Concept
 
 You have a computer which has SSH keys and configuration on them, and on a secondary machine you would like these keys so you are able to access your servers from another machine. This often involves copy-pasting files and also rewriting an SSH configuration file because file paths change, or the operating system changes. This can be quite tedious. This program aims to replace the manual steps involved by allowing a secure method of transferring keys and keeping them all synced in a remote server.
