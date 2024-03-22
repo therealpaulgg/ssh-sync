@@ -23,7 +23,7 @@ jobs:
     - name: Update Homebrew formula
       run: |
         cd homebrew-tap
-        ls
+        ls Formula
 
         GITHUB_REPO="therealpaulgg/ssh-sync"
         FORMULA_PATH="Formula/ssh-sync.rb"
@@ -40,8 +40,8 @@ jobs:
         SHA256=$(curl -Ls $TARBALL_URL | shasum -a 256 | awk '{print $1}')
 
         # Update the formula with the new version and sha256
-        sed -i "" "s|url \".*\"|url \"$TARBALL_URL\"|g" $FORMULA_PATH
-        sed -i "" "s|sha256 \".*\"|sha256 \"$SHA256\"|g" $FORMULA_PATH
+        sed -i "" "s|url \".*\"|url \"$TARBALL_URL\"|g" ./$FORMULA_PATH
+        sed -i "" "s|sha256 \".*\"|sha256 \"$SHA256\"|g" ./$FORMULA_PATH
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
