@@ -1,50 +1,78 @@
-<h1 id="ssh-sync">SSH Sync</h1>
-<p>A CLI application to sync SSH keys along with a SSH configuration between machines on-demand.</p>
-<h2 id="high-level-concept">High-Level Concept</h2>
-<p>You have a computer which has SSH keys and configuration on them, and on a secondary machine you would like these keys so you are able to access your servers from another machine. This often involves copy-pasting files and also rewriting an SSH configuration file because file paths change, or the operating system changes. This can be quite tedious. This program aims to replace the manual steps involved by allowing a secure method of transferring keys and keeping them all synced in a remote server.</p>
-<h2 id="why-not-p2p-">Why not P2P?</h2>
-<p>P2P was considered (and may still be done at a later  date) but ultimately dismissed because every key sync request would have to involve two machines, which would get tedious quickly. The main idea is a transaction involving two machines at the same time would only have to be done once (to allow a new machine access to a user&#39;s keys). After this point, the new machine can communicate to the server freely, uploading and downloading new keys. A P2P implementation would mean that a machine would have to do a &#39;handshake&#39; with another machine each time. There would also be no central source to keep key data synchronized.</p>
-<h1 id="technical-details-crypto-">Technical Details (Crypto)</h1>
-<h2 id="initial-setup">Initial Setup</h2>
-<p>On initial setup, a user will be asked to provide a username and name for the current machine. A ECDSA keypair will also be created, and the user&#39;s public key will be uploaded to the server, corresponding to the username and machine name. From this point on, the user will be able to communicate to the server and upload/download keys, as well as config data.</p>
-<h2 id="communication-to-server">Communication to Server</h2>
-<h3 id="jwt-for-requests">JWT for Requests</h3>
-<p>All requests to the server (besides initial setup) will be done with a JWT. This JWT will be crafted on the client-side. It will be crafted using the ES512 algorithm, using the user&#39;s private key. The token will then be sent to the server, and validated with the user&#39;s public key. The crafted token needs to contain the following:</p>
+<h1 id="ssh-sync-seamless-ssh-key-management">ssh-sync: Seamless SSH Key Management</h1>
+<p>ssh-sync is a powerful CLI tool designed to simplify the way you manage and synchronize your SSH keys and configurations across multiple machines. With ssh-sync, gone are the days of manually copying SSH keys or adjusting configurations when switching devices. Whether you&#39;re moving between workstations or setting up a new machine, ssh-sync ensures your SSH environment is up and running effortlessly.</p>
+<h2 id="quick-start">Quick Start</h2>
+<h3 id="installation">Installation</h3>
+<p>ssh-sync is available on Windows, macOS, and Linux. Choose the installation method that best suits your operating system:</p>
+<h4 id="windows">Windows</h4>
+<p>Install ssh-sync using Winget:</p>
+<pre><code class="lang-shell">winget <span class="hljs-keyword">install</span> ssh-<span class="hljs-keyword">sync</span>
+</code></pre>
+<h4 id="macos">macOS</h4>
+<p>ssh-sync can be installed using Homebrew:</p>
+<pre><code class="lang-shell"><span class="hljs-keyword">brew </span>tap therealpaulgg/ssh-sync
+<span class="hljs-keyword">brew </span>install ssh-sync
+</code></pre>
+<h4 id="linux">Linux</h4>
+<p>For Linux users, download the appropriate package from our <a href="https://github.com/therealpaulgg/ssh-sync/releases">GitHub Releases</a> page:</p>
 <ul>
-<li>Username</li>
-<li>Machine Name</li>
+<li>For Debian-based distributions (e.g., Ubuntu):</li>
 </ul>
-<p>the server will then look up the public key corresponding to the username and machine name provided, and attempt to validate the signature. It will be impossible for someone to forge a JWT for a particular user/machine pair because it would require the private key.</p>
-<p>For example, if Eve crafts a JWT that says <code>{&quot;username&quot;: &quot;Alice&quot;, &quot;machineName&quot;: &quot;my-computer&quot;}</code>, the server will attempt to verify the JWT using Alice&#39;s &#39;my-computer&#39; keypair. Eve cannot impersonate Alice unless she gets her hands on Alice&#39;s private key.</p>
-<h2 id="storing-keys-on-the-server-securely">Storing Keys On The Server Securely</h2>
-<h3 id="master-key">Master Key</h3>
-<p>Each user will have a &#39;Master Key&#39;. This will be a unique symmetric key. This symmetric key will be stored on the server, one copy for each keypair. For example, on the server, there would be <code>E_pubA(master_key)</code> and <code>E_pubB(master_key)</code>. All of the user&#39;s data will be stored on the server in an encrypted AES 256 GCM format. This data can only be decrypted with the master symmetric key, which can only be decrypted by the user using one of their user/machine keypairs.</p>
-<h4 id="upload">Upload</h4>
-<p>Whenever the user wants to upload new data, the server will send the encrypted master key. The user will then decrypt the master key, and send encrypted keys to the server. </p>
-<p>Server sends: <code>E_pubMachine(master_key)</code></p>
-<p>Machine decrypts master key, <code>D_privMachine(E_pubMachine(master_key))</code></p>
-<p>Machine encrypts keys with <code>master_key</code> and also signs the data.</p>
-<p><code>E_privMachine(E_masterKey(plaintext))</code></p>
-<p>Server receives this data and validates the signature:</p>
-<p><code>D_pubMachine(ciphertext)</code></p>
-<p>The server will then store this <code>ciphertext</code>.</p>
-<h4 id="download">Download</h4>
-<p>Whenever the user wants to download data, the server will send all the user&#39;s data in encrypted format, as well as the encrypted master key.</p>
-<p>The user, once it receives the data, will decrypt the master key using their private key, and then decrypt the ciphertext.</p>
-<p>Server sends: <code>E_pubMachine(ciphertext), E_pubMachine(master_key)</code></p>
-<p>Machine decrypts master key, <code>D_privMachine(E_pubMachine(master_key))</code></p>
-<p>Machine decrypts ciphertext.</p>
-<p><code>D_masterKey(D_privMachine(ciphertext))</code></p>
-<h2 id="adding-new-machines">Adding New Machines</h2>
-<p>Adding a new machine will require one of the user&#39;s other machines. The new machine will make a request to the server to be added. The server will then respond with some sort of challenge, requesting that the user enters a phrase on one of their old machines. Once the user enters the phrase on their old machine, the server will then allow them to upload a public keypair so they can do communication with the server. The old machine will need to be involved a little longer so that it can decrypt the master key, and upload a new master key using this new machine&#39;s public key. Here is the full process laid out:</p>
-<p>Machine B requests to be added to allowed clients<br>Server gives Machine B a challenge phrase which must be entered on Machine A<br>Challenge phrase is entered on Machine A.  Machine A awaits response from server (Machine B&#39;s public key)<br>Machine B generates keypair and uploads public key to server.<br>Server saves B&#39;s public key and then sends <code>E_aPub(master_key)</code> &amp; B&#39;s public key to Machine A.<br>Machine A does <code>D_aPriv(enc_master_key)</code>, and then sends <code>E_bPub(master_key)</code> to the server.<br>Server then saves this new encrypted master key.</p>
-<h1 id="other-technical-details">Other Technical Details</h1>
-<h2 id="ssh-config-parsing">SSH Config Parsing</h2>
-<p>Part of the syncing process will be where the program parses a user&#39;s SSH config file, and then sends the parsed format over to the server. Other machines, when syncing, will be able to have new config files generated for them based on what is in the server (and the CLI will handle changing user directories &amp; OS changes).</p>
-<h2 id="data-conflicts">Data Conflicts</h2>
-<p>TODO: after parsing SSH config, if there are duplicate entries, attempt to merge, but with conflicts, ask user how to resolve.</p>
-<p>TODO: what if duplicate keys get uploaded? ask user to replace/skip</p>
-<h1 id="p2p-concept">P2P Concept</h1>
-<p>If P2P was to be implemented, a lot of the crypto needed for the server implementation would be unnecessary. This is how a request would probably go:</p>
-<p>Machine B wants Machine A&#39;s keys and config.<br>Machine A challenges Machine B with a phrase.<br>Machine B responds to challenge, and sends its public key.<br>Assuming challenge is passed, Machine A encrypts its data using EC-DH-A256GCM (Machine B public key) and sends it over to Machine B.<br>Machine B would receive the data, decrypt it, and the program would manage things as necessary.</p>
-<p>All the other functionality of the program (i.e SSH config parser) would remain the same.</p>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.deb-file</span>&gt;
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">dpkg</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync_0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8_amd64</span><span class="hljs-selector-class">.deb</span>
+</code></pre>
+<ul>
+<li>For RPM-based distributions (e.g., Fedora, CentOS):</li>
+</ul>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.rpm-file</span>&gt;
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">rpm</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync-v0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8-1</span><span class="hljs-selector-class">.x86_64</span><span class="hljs-selector-class">.rpm</span>
+</code></pre>
+<h2 id="getting-started-with-ssh-sync">Getting Started with SSH-Sync</h2>
+<p>SSH-Sync makes managing and syncing your SSH keys across multiple machines effortless. Here&#39;s how to get started:</p>
+<h3 id="setup">Setup</h3>
+<p>First, you&#39;ll need to set up SSH-Sync on your machine. Run the following command:</p>
+<pre><code class="lang-shell">ssh-sync <span class="hljs-built_in">setup</span>
+</code></pre>
+<p>During setup, you&#39;ll be prompted to choose between using your own server or the sshsync.io hosted server. Next, you&#39;ll specify whether you have an existing account. If you do not, you&#39;ll be guided through creating an account, naming your machine, and generating a keypair for it. If you have an existing account, you&#39;ll be given a challenge phrase, which you must enter on another one of your machines using the <code>challenge-response</code> command. This process securely adds your new machine to your SSH-Sync account.</p>
+<h3 id="uploading-keys">Uploading Keys</h3>
+<p>To upload your SSH keys and configuration to the server, run:</p>
+<pre><code class="lang-shell">ssh-<span class="hljs-keyword">sync</span> upload
+</code></pre>
+<p>This command securely transmits your SSH keys and configuration to the chosen server, making them accessible from your other machines.</p>
+<h3 id="downloading-keys">Downloading Keys</h3>
+<p>To download your SSH keys to a new or existing machine, ensuring it&#39;s set up for remote access, use:</p>
+<pre><code class="lang-shell">ssh-<span class="hljs-keyword">sync</span> download
+</code></pre>
+<p>This command fetches your SSH keys from the server, setting up your SSH environment on the machine.</p>
+<h3 id="challenge-response">Challenge Response</h3>
+<p>If setting up a new machine with an existing account, use:</p>
+<pre><code class="lang-shell">ssh-<span class="hljs-keyword">sync</span> challenge-response
+</code></pre>
+<p>Enter the challenge phrase received during the setup of another machine. This verifies your new machine and securely transfers the necessary keys.</p>
+<h3 id="managing-machines">Managing Machines</h3>
+<p>To list all machines configured with your SSH-Sync account, run:</p>
+<pre><code class="lang-shell">ssh-<span class="hljs-keyword">sync</span> <span class="hljs-keyword">list</span>-machines
+</code></pre>
+<p>If you need to remove a machine from your SSH-Sync account, use:</p>
+<pre><code class="lang-shell">ssh-<span class="hljs-keyword">sync</span> <span class="hljs-built_in">remove</span>-machine
+</code></pre>
+<p>Specify the machine you wish to remove following the command.</p>
+<h3 id="reset">Reset</h3>
+<p>To remove the current machine from your account and clear all SSH-Sync data:</p>
+<pre><code class="lang-shell">ssh-<span class="hljs-keyword">sync</span> reset
+</code></pre>
+<p>This command is useful if you&#39;re decommissioning a machine or wish to start fresh.</p>
+<p>By following these steps, you can seamlessly sync and manage your SSH keys across all your machines with SSH-Sync.</p>
+<h2 id="how-ssh-sync-works">How ssh-sync Works</h2>
+<p>ssh-sync leverages a client-server model to store and synchronize your SSH keys securely. The diagram below outlines the ssh-sync architecture and its workflow:</p>
+<p><img src="https://raw.githubusercontent.com/therealpaulgg/ssh-sync/main/docs/diagrams.svg" alt="ssh-sync Architecture"></p>
+<p>For a deep dive into the technicalities of ssh-sync, including its security model, data storage, and key synchronization process, check out our <a href="https://github.com/therealpaulgg/ssh-sync/wiki">Wiki</a>.</p>
+<h2 id="why-choose-ssh-sync-">Why Choose ssh-sync?</h2>
+<ul>
+<li><strong>Simplify SSH Key Management:</strong> Easily sync your SSH keys and configurations across all your devices.</li>
+<li><strong>Enhanced Security:</strong> ssh-sync uses advanced cryptographic techniques to ensure your SSH keys are securely transmitted and stored.</li>
+<li><strong>Effortless Setup:</strong> With support for Windows, macOS, and Linux, setting up ssh-sync is straightforward, regardless of your operating system.</li>
+</ul>
+<h2 id="contributing">Contributing</h2>
+<p>ssh-sync is an open-source project, and contributions are welcome! If you&#39;re interested in contributing, please check out our <a href="https://github.com/therealpaulgg/ssh-sync/blob/main/CONTRIBUTING.md">contribution guidelines</a>.</p>
+<h2 id="license">License</h2>
+<p>ssh-sync is released under the <a href="https://github.com/therealpaulgg/ssh-sync/blob/main/LICENSE.txt">MIT License</a>.</p>
