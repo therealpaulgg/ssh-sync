@@ -11,7 +11,7 @@ This diagram depicts the following:
 3. Authenticated download request
 4. Authenticated upload request
 
-![svg-of-ssh-sync-architecture](./diagrams.svg)
+![svg-of-ssh-sync-architecture](https://raw.githubusercontent.com/therealpaulgg/ssh-sync/main/docs/diagrams.svg)
 
 ## High-Level Concept
 
