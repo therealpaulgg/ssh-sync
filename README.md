@@ -118,6 +118,90 @@ This command is useful if you're decommissioning a machine or wish to start fres
 
 By following these steps, you can seamlessly sync and manage your SSH keys across all your machines with SSH-Sync.
 
+## Self-Hosting ssh-sync-server
+
+In general, for self-hosting, we recommend a setup where ssh-sync-server is behind a reverse proxy (i.e Nginx), and SSL is handled via LetsEncrypt.
+
+### Docker
+
+Docker is the easiest way to run the server. Here is a simple `docker-compose` file you can use:
+
+```yaml
+version: '3.3'
+services:
+    ssh-sync-server:
+        restart: always
+        environment:
+          - PORT=<your_port_here>
+          - NO_DOTENV=1
+          - DATABASE_USERNAME=sshsync
+          - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+          - DATABASE_HOST=ssh-sync-db:5432
+        logging:
+          driver: json-file
+          options:
+            max-size: 10m
+        ports:
+          - '<host_port>:<container_port>'
+        image: therealpaulgg/ssh-sync-server:latest
+        container_name: ssh-sync-server
+    ssh-sync-db:
+        image: therealpaulgg/ssh-sync-db:latest
+        container_name: ssh-sync-db
+        volumes:
+          - /path/to/db-volume:/var/lib/postgresql/data
+        environment:
+          - POSTGRES_USER=sshsync
+          - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          - POSTGRES_DB=sshsync
+        restart: always
+```
+
+### Nginx
+
+Example Nginx config (must support websockets)
+
+```nginx
+server {
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/server.sshsync.io/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/server.sshsync.io/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+    server_name server.sshsync.io;
+    location / {
+            proxy_pass http://127.0.0.1:<ssh-sync-server-port>;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "Upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $remote_addr;
+            proxy_set_header X-Real-IP $remote_addr;
+    }
+
+
+}
+server {
+    if ($host = server.sshsync.io) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+    listen 80;
+    listen [::]:80;
+    server_name server.sshsync.io;
+    return 404; # managed by Certbot
+
+
+}
+```
+
+If you don't want to use docker, other methods of running are not supported at this time, but the source repos are linked below so you can configure your own server as you wish.
+
+[ssh-sync-server Github](https://github.com/therealpaulgg/ssh-sync-server) 
+[ssh-sync-db](https://github.com/therealpaulgg/ssh-sync-db)
+
 ## How ssh-sync Works
 
 ssh-sync leverages a client-server model to store and synchronize your SSH keys securely. The diagram below outlines the ssh-sync architecture and its workflow:
