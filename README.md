@@ -72,6 +72,8 @@ This command securely transmits your SSH keys and configuration to the chosen se
 
 ### Downloading Keys
 
+**NOTE**: ssh-sync currently downloads files to a directory named `.ssh-sync-data`. This is to avoid altering a user's ssh keys as this data is sensitive. v1 release of ssh-sync will include a toggle to use this mode, or to use .ssh-sync directly, and will also include additional safety features like checking with the user before replacing files that have different content.
+
 To download your SSH keys to a new or existing machine, ensuring it's set up for remote access, use:
 
 ```shell
