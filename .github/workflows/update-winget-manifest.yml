@@ -6,11 +6,11 @@ on:
 
 jobs:
   update-winget-manifest:
-  runs-on: windows-latest
-  steps:
-    - uses: vedantmgoyal2009/winget-releaser@v2
-      with:
-        identifier: therealpaulgg.ssh-sync
-        version: ${{ github.ref_name }}
-        release-tag: ${{ github.ref_name }}
-        token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: therealpaulgg.ssh-sync
+          version: ${{ github.ref_name }}
+          release-tag: ${{ github.ref_name }}
+          token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
