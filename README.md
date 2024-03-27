@@ -16,7 +16,7 @@ ssh-sync is available on Windows, macOS, and Linux. Choose the installation meth
 Install ssh-sync using Winget:
 
 ```shell
-winget install ssh-sync
+winget install therealpaulgg.ssh-sync
 ```
 
 #### macOS
