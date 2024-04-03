@@ -3,6 +3,7 @@ name: Update Homebrew Formula
 on:
   release:
     types: [published]
+    branches: [main]
 
 jobs:
   update-formula:
