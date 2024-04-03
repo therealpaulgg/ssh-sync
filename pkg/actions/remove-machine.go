@@ -2,13 +2,12 @@ package actions
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 
+	"github.com/samber/lo"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -26,36 +25,33 @@ func RemoveMachine(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print("Please enter the machine name: ")
+	answer := c.Args().First()
 	scanner := bufio.NewScanner(os.Stdin)
-	var answer string
+	if answer == "" {
+		fmt.Print("Please enter the machine name: ")
+		if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
+			return err
+		}
+	}
+	machines, err := retrieval.GetMachines(profile)
+	if err != nil {
+		return err
+	}
+	_, exists := lo.Find(machines, func(x dto.MachineDto) bool {
+		return x.Name == answer
+	})
+	if !exists {
+		fmt.Println("Machine not found in your list, exiting.")
+		return nil
+	}
+	fmt.Println("This will remove this machine's public key from your account and you will no longer be able to use it to perform operations on your account.")
+	fmt.Printf("Please confirm your intent to delete the following machine: %s (y/n): ", answer)
 	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
-	buf := new(bytes.Buffer)
-	if err := json.NewEncoder(buf).Encode(dto.MachineDto{
-		Name: answer,
-	}); err != nil {
-		return err
+	if answer != "y" {
+		return nil
 	}
-	url := profile.ServerUrl
-	url.Path = "/api/v1/machines/"
-	req, err := http.NewRequest("DELETE", url.String(), buf)
-	if err != nil {
-		return err
-	}
-	token, err := utils.GetToken()
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-	return nil
+	err = retrieval.DeleteMachine(profile, answer)
+	return err
 }
