@@ -46,8 +46,9 @@ func main() {
 				Action: actions.ListMachines,
 			},
 			{
-				Name:   "remove-machine",
-				Action: actions.RemoveMachine,
+				Name:      "remove-machine",
+				ArgsUsage: "[machine-name]",
+				Action:    actions.RemoveMachine,
 			},
 			{
 				Name:   "reset",

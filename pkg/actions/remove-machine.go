@@ -25,11 +25,13 @@ func RemoveMachine(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print("Please enter the machine name: ")
+	answer := c.Args().First()
 	scanner := bufio.NewScanner(os.Stdin)
-	var answer string
-	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
-		return err
+	if answer == "" {
+		fmt.Print("Please enter the machine name: ")
+		if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
+			return err
+		}
 	}
 	machines, err := retrieval.GetMachines(profile)
 	if err != nil {
