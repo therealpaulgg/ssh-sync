@@ -2,7 +2,7 @@ name: Update Winget Manifest
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   update-winget-manifest:
