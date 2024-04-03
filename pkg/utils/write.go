@@ -61,10 +61,7 @@ func WriteKey(key []byte, filename string, sshDirectory string) error {
 			return err
 		}
 	}
-	// check if file exists (for conflict)
 	_, err = os.OpenFile(filepath.Join(p, filename), os.O_RDONLY, 0600)
-	// if the file exists, hash the contents of the file and compare it to the key
-	// if the hashes differ, let the user know and ask them to resolve the conflict
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	} else if err == nil {
