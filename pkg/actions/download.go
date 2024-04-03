@@ -61,18 +61,25 @@ func Download(c *cli.Context) error {
 		}
 		data.Keys[i].Data = decryptedKey
 	}
+	isSafeMode := c.Bool("safe-mode")
+	var directory string
+	if isSafeMode {
+		fmt.Println("Executing in safe mode (keys writing to .ssh-sync-data)")
+		directory = ".ssh-sync-data"
+	} else {
+		directory = ".ssh"
+	}
 	if err := utils.WriteConfig(lo.Map(data.SshConfig, func(config dto.SshConfigDto, i int) models.Host {
 		return models.Host{
 			Host:          config.Host,
 			Values:        config.Values,
 			IdentityFiles: config.IdentityFiles,
 		}
-	})); err != nil {
+	}), directory); err != nil {
 		return err
 	}
 	for _, key := range data.Keys {
-
-		if err := utils.WriteKey(key.Data, key.Filename); err != nil {
+		if err := utils.WriteKey(key.Data, key.Filename, directory); err != nil {
 			return err
 		}
 	}

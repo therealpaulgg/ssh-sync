@@ -34,7 +34,14 @@ func main() {
 				Action: actions.Upload,
 			},
 			{
-				Name:   "download",
+				Name: "download",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "safe-mode",
+						Aliases: []string{"s"},
+						Usage:   "Safe mode will sync to an alternate directory (.ssh-sync-data)",
+					},
+				},
 				Action: actions.Download,
 			},
 			{
