@@ -62,6 +62,8 @@ During setup, you'll be prompted to choose between using your own server or the 
 
 ### Uploading Keys
 
+**NOTE**: Uploading keys will overwrite your existing keys on the server. Later versions of ssh-sync may include a conflict resolution for upload, but it is currently not implemented.
+
 To upload your SSH keys and configuration to the server, run:
 
 ```shell
@@ -72,8 +74,6 @@ This command securely transmits your SSH keys and configuration to the chosen se
 
 ### Downloading Keys
 
-**NOTE**: ssh-sync currently downloads files to a directory named `.ssh-sync-data`. This is to avoid altering a user's ssh keys as this data is sensitive. v1 release of ssh-sync will include a toggle to use this mode, or to use .ssh-sync directly, and will also include additional safety features like checking with the user before replacing files that have different content.
-
 To download your SSH keys to a new or existing machine, ensuring it's set up for remote access, use:
 
 ```shell
@@ -81,6 +81,26 @@ ssh-sync download
 ```
 
 This command fetches your SSH keys from the server, setting up your SSH environment on the machine.
+
+#### Conflict Resolution
+
+In case there is a difference between a local file and one on your server, ssh-sync will let you know and you can opt to overwrite, skip, or save a file with a `.duplicate` extension for you to review manually.
+
+```shell
+diff detected for my_key.
+1. Overwrite
+2. Skip
+3. Save new file (as .duplicate extension for manual resolution)
+Please choose an option (will skip by default):
+```
+
+#### Safe Mode
+
+If you simply want to download your keys to a temporary directory, and not interfere with your primary .ssh directory, you may also do this by using the `--safe-mode` (or `-s`) flag.
+
+```shell
+ssh-sync download --safe-mode
+```
 
 ### Challenge Response
 
@@ -103,10 +123,12 @@ ssh-sync list-machines
 If you need to remove a machine from your SSH-Sync account, use:
 
 ```shell
-ssh-sync remove-machine
+ssh-sync remove-machine <machine-name>
 ```
 
 Specify the machine you wish to remove following the command.
+
+You may optionally provide the machine name on the command line so you don't have to type it in when running the command.
 
 ### Reset
 
