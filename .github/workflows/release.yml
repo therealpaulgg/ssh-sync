@@ -101,3 +101,4 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
+          token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
