@@ -1,16 +1,13 @@
 package actions
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/samber/lo"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
+	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -28,38 +25,9 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	token, err := utils.GetToken()
+	data, err := retrieval.GetUserData(profile)
 	if err != nil {
 		return err
-	}
-	dataUrl := profile.ServerUrl
-	dataUrl.Path = "/api/v1/data"
-	req, err := http.NewRequest("GET", dataUrl.String(), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Authorization", "Bearer "+token)
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != 200 {
-		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
-	}
-	var data dto.DataDto
-	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
-		return err
-	}
-	masterKey, err := utils.RetrieveMasterKey()
-	if err != nil {
-		return err
-	}
-	for i, key := range data.Keys {
-		decryptedKey, err := utils.DecryptWithMasterKey(key.Data, masterKey)
-		if err != nil {
-			return err
-		}
-		data.Keys[i].Data = decryptedKey
 	}
 	isSafeMode := c.Bool("safe-mode")
 	var directory string

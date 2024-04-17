@@ -61,6 +61,12 @@ func main() {
 				Name:   "reset",
 				Action: actions.Reset,
 			},
+			{
+				Name:        "interactive",
+				Description: "Uses a TUI mode for interacting with keys and config",
+				Usage:       "Interactively manage your ssh keys with a TUI",
+				Action:      actions.Interactive,
+			},
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
