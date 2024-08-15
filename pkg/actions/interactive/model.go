@@ -1,15 +1,10 @@
-package actions
+package interactive
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/samber/lo"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
-	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
-	"github.com/therealpaulgg/ssh-sync/pkg/utils"
-	"github.com/urfave/cli/v2"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -17,24 +12,6 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-)
-
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
-
-var (
-	titleStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Right = "├"
-		return lipgloss.NewStyle().BorderStyle(b).Padding(0, 1).BorderForeground(lipgloss.Color("#FF00FF")).Bold(true)
-	}()
-
-	infoStyle = func() lipgloss.Style {
-		b := lipgloss.RoundedBorder()
-		b.Left = "┤"
-		return titleStyle.Copy().BorderStyle(b)
-	}()
-
-	basicColorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF00FF"))
 )
 
 type model struct {
@@ -56,8 +33,8 @@ type model struct {
 }
 
 func (m model) headerView() string {
-	title := titleStyle.Render(m.Data.Keys[m.selected.index].Filename)
-	line := basicColorStyle.Render(strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title))))
+	title := TitleStyle.Render(m.Data.Keys[m.selected.index].Filename)
+	line := BasicColorStyle.Render(strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title))))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
 
@@ -92,8 +69,8 @@ var keys = keyMap{
 }
 
 func (m model) footerView() string {
-	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
-	line := basicColorStyle.Render(strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(info))))
+	info := InfoStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
+	line := BasicColorStyle.Render(strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(info))))
 	h := help.New()
 	return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Center, line, info), h.View(keys))
 }
@@ -134,7 +111,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
+		h, v := DocStyle.GetFrameSize()
 		m.list.SetSize(msg.Width-h, msg.Height-v)
 		headerHeight := lipgloss.Height(m.headerView())
 		footerHeight := lipgloss.Height(m.footerView())
@@ -175,61 +152,5 @@ func (m model) View() string {
 	if m.selected.title != "" {
 		return fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.viewport.View(), m.footerView())
 	}
-	return docStyle.Render(m.list.View())
-}
-
-func Interactive(c *cli.Context) error {
-	// get user data
-	setup, err := checkIfSetup()
-	if err != nil {
-		return err
-	}
-	if !setup {
-		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
-		return nil
-	}
-	profile, err := utils.GetProfile()
-	if err != nil {
-		return err
-	}
-	data, err := retrieval.GetUserData(profile)
-	if err != nil {
-		return err
-	}
-	items := lo.Map(data.Keys, func(key dto.KeyDto, index int) list.Item {
-		return item{title: key.Filename, index: index}
-	})
-
-	enterBinding := key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("enter", "choose"),
-	)
-
-	keyList := list.New(items, list.NewDefaultDelegate(), 0, 0)
-	keyList.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{
-			enterBinding,
-		}
-	}
-	keyList.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{
-			enterBinding,
-		}
-	}
-	model := model{
-		list: keyList,
-
-		// A map which indicates which choices are selected. We're using
-		// the  map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
-		selected: item{},
-		Data:     data,
-	}
-
-	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
-	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
-		return err
-	}
-	return nil
+	return DocStyle.Render(m.list.View())
 }

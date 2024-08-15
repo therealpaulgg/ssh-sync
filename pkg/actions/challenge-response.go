@@ -14,7 +14,7 @@ import (
 )
 
 func ChallengeResponse(c *cli.Context) error {
-	setup, err := checkIfSetup()
+	setup, err := utils.CheckIfSetup()
 	if err != nil {
 		return err
 	}

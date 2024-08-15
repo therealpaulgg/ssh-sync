@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/actions"
+	"github.com/therealpaulgg/ssh-sync/pkg/actions/interactive"
 	"github.com/urfave/cli/v2"
 )
 
@@ -65,7 +66,7 @@ func main() {
 				Name:        "interactive",
 				Description: "Uses a TUI mode for interacting with keys and config",
 				Usage:       "Interactively manage your ssh keys with a TUI",
-				Action:      actions.Interactive,
+				Action:      interactive.Interactive,
 			},
 		},
 	}
