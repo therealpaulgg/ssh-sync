@@ -22,6 +22,7 @@ const (
 	StateManageConfig
 	StateManageSSHKeys
 	StateViewConfigEntries
+	StateViewSSHKeyOptions
 	StateViewSSHKeyContent
 )
 
@@ -35,6 +36,8 @@ func (s UIState) String() string {
 		return "Manage SSH Keys"
 	case StateViewConfigEntries:
 		return "View Config Entries"
+	case StateViewSSHKeyOptions:
+		return "View SSH Key Options"
 	case StateViewSSHKeyContent:
 		return "View SSH Key Content"
 	default:
@@ -43,13 +46,14 @@ func (s UIState) String() string {
 }
 
 type model struct {
-	list         list.Model
-	mainMenu     list.Model
-	viewport     viewport.Model
-	ready        bool
-	Data         dto.DataDto
-	currentState UIState
-	selected     item
+	keyList       list.Model
+	mainMenu      list.Model
+	sshKeyOptions list.Model
+	viewport      viewport.Model
+	ready         bool
+	Data          dto.DataDto
+	currentState  UIState
+	selected      item
 }
 
 func (m model) headerView() string {
@@ -63,6 +67,8 @@ func (m model) headerView() string {
 		title = "Manage SSH Keys"
 	case StateViewConfigEntries:
 		title = "Config Entries"
+	case StateViewSSHKeyOptions:
+		title = "Options for - " + m.Data.Keys[m.selected.index].Filename
 	case StateViewSSHKeyContent:
 		title = m.Data.Keys[m.selected.index].Filename
 	}
@@ -123,11 +129,19 @@ func NewModel(data dto.DataDto) model {
 	mainMenu.Title = "Main Menu"
 	mainMenu.SetShowHelp(false)
 
+	sshKeyOptions := list.New([]list.Item{
+		item{title: "View Content", desc: "View the content of the SSH key"},
+		item{title: "Delete Key", desc: "Delete the SSH key from the store"},
+	}, list.NewDefaultDelegate(), 0, 0)
+	sshKeyOptions.Title = "SSH Key Options"
+	sshKeyOptions.SetShowHelp(false)
+
 	return model{
-		mainMenu:     mainMenu,
-		list:         list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
-		currentState: StateMainMenu,
-		Data:         data,
+		mainMenu:      mainMenu,
+		sshKeyOptions: sshKeyOptions,
+		keyList:       list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
+		currentState:  StateMainMenu,
+		Data:          data,
 	}
 }
 
@@ -160,7 +174,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StateMainMenu:
 		m.mainMenu, cmd = m.mainMenu.Update(msg)
 	case StateManageSSHKeys:
-		m.list, cmd = m.list.Update(msg)
+		m.keyList, cmd = m.keyList.Update(msg)
+	case StateViewSSHKeyOptions:
+		m.sshKeyOptions, cmd = m.sshKeyOptions.Update(msg)
 	default:
 		m.viewport, cmd = m.viewport.Update(msg)
 	}
@@ -177,10 +193,12 @@ func (m model) handleBack() model {
 		m.currentState = StateMainMenu
 	case StateViewConfigEntries:
 		m.currentState = StateManageConfig
-	case StateViewSSHKeyContent:
+	case StateViewSSHKeyOptions:
 		m.currentState = StateManageSSHKeys
 		m.selected = item{}
 		m.viewport.SetContent("")
+	case StateViewSSHKeyContent:
+		m.currentState = StateViewSSHKeyOptions
 	}
 	return m
 }
@@ -193,12 +211,17 @@ func (m model) handleEnter() model {
 			m.currentState = StateManageConfig
 		} else if selected.title == "Manage SSH Keys" {
 			m.currentState = StateManageSSHKeys
-			m.list.SetItems(getSSHKeyItems(m.Data.Keys))
+			m.keyList.SetItems(getSSHKeyItems(m.Data.Keys))
 		}
 	case StateManageSSHKeys:
-		m.selected = m.list.SelectedItem().(item)
-		m.currentState = StateViewSSHKeyContent
+		m.selected = m.keyList.SelectedItem().(item)
+		m.currentState = StateViewSSHKeyOptions
 		m.viewport.SetContent(string(m.Data.Keys[m.selected.index].Data))
+	case StateViewSSHKeyOptions:
+		selected := m.sshKeyOptions.SelectedItem().(item)
+		if selected.title == "View Content" {
+			m.currentState = StateViewSSHKeyContent
+		}
 	case StateManageConfig:
 		m.currentState = StateViewConfigEntries
 		// TODO: Implement config entry viewing
@@ -208,8 +231,9 @@ func (m model) handleEnter() model {
 
 func (m model) handleWindowSize(msg tea.WindowSizeMsg) model {
 	h, v := DocStyle.GetFrameSize()
-	m.list.SetSize(msg.Width-h, msg.Height-v)
+	m.keyList.SetSize(msg.Width-h, msg.Height-v)
 	m.mainMenu.SetSize(msg.Width-h, msg.Height-v)
+	m.sshKeyOptions.SetSize(msg.Width-h, msg.Height-v)
 	headerHeight := lipgloss.Height(m.headerView())
 	footerHeight := lipgloss.Height(m.footerView())
 	verticalMarginHeight := headerHeight + footerHeight
@@ -237,10 +261,13 @@ func (m model) View() string {
 		return DocStyle.Render(fmt.Sprintf("%s\nConfig Management (Not yet implemented)\n%s", m.headerView(), m.footerView()))
 
 	case StateManageSSHKeys:
-		return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.list.View(), m.footerView()))
+		return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.keyList.View(), m.footerView()))
 
 	case StateViewConfigEntries:
 		return DocStyle.Render(fmt.Sprintf("%s\nConfig Entries View (Not yet implemented)\n%s", m.headerView(), m.footerView()))
+
+	case StateViewSSHKeyOptions:
+		return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.sshKeyOptions.View(), m.footerView()))
 
 	case StateViewSSHKeyContent:
 		return fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.viewport.View(), m.footerView())
