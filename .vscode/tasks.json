@@ -1,0 +1,33 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run headless dlv",
+            "type": "process",
+            "command": "dlv",
+            "args": [
+                "debug",
+                "--headless",
+                "--listen=:2345",
+                "--api-version=2",
+                "${workspaceFolder}/main.go",
+                "--",
+                "interactive"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "go",
+                "pattern": {
+                    "regexp": "^API server listening at: .+:\\d+$",
+                    "line": 1,
+                    "message": 1
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^API server listening at:",
+                    "endsPattern": "^API server listening at:"
+                }
+            }
+        }
+    ]
+}
