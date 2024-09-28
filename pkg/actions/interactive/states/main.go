@@ -12,7 +12,7 @@ type Model struct {
 
 func NewModel() Model {
 	return Model{
-		currentState: NewMainMenu(),
+		currentState: NewMainMenu(baseState{}),
 	}
 }
 
@@ -24,11 +24,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := DocStyle.GetFrameSize()
+		h, v := AppStyle.GetFrameSize()
 		adjustedWidth, adjustedHeight := msg.Width-h, msg.Height-v
 		m.width = adjustedWidth
 		m.height = adjustedHeight
-		m.currentState.SetSize(msg.Width, msg.Height)
+		m.currentState.SetSize(m.width, m.height)
 	}
 	m.currentState, cmd = m.currentState.Update(msg)
 	return m, cmd

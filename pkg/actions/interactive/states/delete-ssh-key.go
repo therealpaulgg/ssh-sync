@@ -13,8 +13,13 @@ type DeleteSSHKey struct {
 	key dto.KeyDto
 }
 
-func NewDeleteSSHKey(key dto.KeyDto) *DeleteSSHKey {
-	return &DeleteSSHKey{key: key}
+func NewDeleteSSHKey(b baseState, key dto.KeyDto) *DeleteSSHKey {
+	d := &DeleteSSHKey{
+		key:       key,
+		baseState: b,
+	}
+	d.Initialize()
+	return d
 }
 
 func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -25,13 +30,13 @@ func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
 			return d, tea.Quit
 		case "y", "Y":
 			// Implement key deletion logic here
-			sshKeyManager, err := NewSSHKeyManager()
+			sshKeyManager, err := NewSSHKeyManager(d.baseState)
 			if err != nil {
-				return NewErrorState(err), nil
+				return NewErrorState(d.baseState, err), nil
 			}
 			return sshKeyManager, nil
 		case "n", "N", "backspace":
-			return NewSSHKeyOptions(d.key), nil
+			return NewSSHKeyOptions(d.baseState, d.key), nil
 		}
 	}
 	return d, nil
@@ -39,12 +44,13 @@ func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
 
 func (d *DeleteSSHKey) View() string {
 	content := fmt.Sprintf("Are you sure you want to delete the key %s? (y/n)", d.key.Filename)
-	return DocStyle.Render(fmt.Sprintf("%s\n\n%s\n\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n\n%s\n\n%s",
 		headerView("Delete Key", d.width),
 		content,
 		footerView("Delete Key", d.width)))
 }
 
-func (d *DeleteSSHKey) SetSize(width, height int) {
-	d.baseState.SetSize(width, height)
-}
+// func (d *DeleteSSHKey) SetSize(width, height int) {
+// 	d.width = width
+// 	d.height = height
+// }

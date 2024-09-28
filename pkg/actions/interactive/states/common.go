@@ -23,6 +23,12 @@ type State interface {
 	Update(msg tea.Msg) (State, tea.Cmd)
 	View() string
 	SetSize(width, height int)
+	Initialize()
+}
+
+// Init code that should be always run after a new state is created
+func (b *baseState) Initialize() {
+	b.SetSize(b.width, b.height)
 }
 
 // item represents a selectable item in a list

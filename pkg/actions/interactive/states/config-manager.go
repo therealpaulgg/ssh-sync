@@ -13,7 +13,7 @@ type ConfigManager struct {
 	list list.Model
 }
 
-func NewConfigManager() *ConfigManager {
+func NewConfigManager(b baseState) *ConfigManager {
 	items := []list.Item{
 		item{title: "Edit Config", desc: "Edit the SSH Sync configuration"},
 		item{title: "View Config", desc: "View the current SSH Sync configuration"},
@@ -21,7 +21,12 @@ func NewConfigManager() *ConfigManager {
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Config Management"
 	l.SetShowHelp(false)
-	return &ConfigManager{list: l}
+	c := &ConfigManager{
+		list:      l,
+		baseState: b,
+	}
+	c.Initialize()
+	return c
 }
 
 func (c *ConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -31,7 +36,7 @@ func (c *ConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
 		case "q", "ctrl+c":
 			return c, tea.Quit
 		case "backspace":
-			return NewMainMenu(), nil
+			return NewMainMenu(c.baseState), nil
 		}
 	}
 	var cmd tea.Cmd
@@ -40,13 +45,16 @@ func (c *ConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (c *ConfigManager) View() string {
-	return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
 		headerView("Config Management", c.width),
 		c.list.View(),
 		footerView("Config Management", c.width)))
 }
 
 func (c *ConfigManager) SetSize(width, height int) {
-	c.baseState.SetSize(width, height)
-	c.list.SetSize(width-4, height-7) // Adjust for margins and header/footer
+	c.list.SetSize(width, height)
+}
+
+func (c *ConfigManager) Initialize() {
+	c.SetSize(c.width, c.height)
 }

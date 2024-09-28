@@ -17,7 +17,7 @@ type SSHKeyManager struct {
 	keys []dto.KeyDto
 }
 
-func NewSSHKeyManager() (*SSHKeyManager, error) {
+func NewSSHKeyManager(baseState baseState) (*SSHKeyManager, error) {
 	profile, err := utils.GetProfile()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profile: %w", err)
@@ -36,10 +36,13 @@ func NewSSHKeyManager() (*SSHKeyManager, error) {
 	l.Title = "SSH Keys"
 	l.SetShowHelp(false)
 
-	return &SSHKeyManager{
-		list: l,
-		keys: data.Keys,
-	}, nil
+	m := &SSHKeyManager{
+		list:      l,
+		keys:      data.Keys,
+		baseState: baseState,
+	}
+	m.Initialize()
+	return m, nil
 }
 
 func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -50,9 +53,9 @@ func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
 			return s, tea.Quit
 		case "enter":
 			selected := s.list.SelectedItem().(item)
-			return NewSSHKeyOptions(s.keys[selected.index]), nil
+			return NewSSHKeyOptions(s.baseState, s.keys[selected.index]), nil
 		case "backspace":
-			return NewMainMenu(), nil
+			return NewMainMenu(s.baseState), nil
 		}
 	}
 	var cmd tea.Cmd
@@ -61,7 +64,7 @@ func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (s *SSHKeyManager) View() string {
-	return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
 		headerView("SSH Keys", s.width),
 		s.list.View(),
 		footerView("SSH Keys", s.width)))
@@ -70,4 +73,8 @@ func (s *SSHKeyManager) View() string {
 func (s *SSHKeyManager) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
 	s.list.SetSize(width, height)
+}
+
+func (s *SSHKeyManager) Initialize() {
+	s.SetSize(s.width, s.height)
 }

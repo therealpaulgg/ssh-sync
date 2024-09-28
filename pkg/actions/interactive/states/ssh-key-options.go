@@ -15,7 +15,7 @@ type SSHKeyOptions struct {
 	selectedKey dto.KeyDto
 }
 
-func NewSSHKeyOptions(key dto.KeyDto) *SSHKeyOptions {
+func NewSSHKeyOptions(b baseState, key dto.KeyDto) *SSHKeyOptions {
 	items := []list.Item{
 		item{title: "View Content", desc: "View the content of the SSH key"},
 		item{title: "Delete Key", desc: "Delete the SSH key from the store"},
@@ -23,10 +23,13 @@ func NewSSHKeyOptions(key dto.KeyDto) *SSHKeyOptions {
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Options for " + key.Filename
 	l.SetShowHelp(false)
-	return &SSHKeyOptions{
+	s := &SSHKeyOptions{
 		list:        l,
 		selectedKey: key,
+		baseState:   b,
 	}
+	s.Initialize()
+	return s
 }
 
 func (s *SSHKeyOptions) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -39,14 +42,14 @@ func (s *SSHKeyOptions) Update(msg tea.Msg) (State, tea.Cmd) {
 			i := s.list.SelectedItem().(item)
 			switch i.title {
 			case "View Content":
-				return NewSSHKeyContent(s.selectedKey), nil
+				return NewSSHKeyContent(s.baseState, s.selectedKey), nil
 			case "Delete Key":
-				return NewDeleteSSHKey(s.selectedKey), nil
+				return NewDeleteSSHKey(s.baseState, s.selectedKey), nil
 			}
 		case "backspace":
-			sshKeyManager, err := NewSSHKeyManager()
+			sshKeyManager, err := NewSSHKeyManager(s.baseState)
 			if err != nil {
-				return NewErrorState(err), nil
+				return NewErrorState(s.baseState, err), nil
 			}
 			return sshKeyManager, nil
 		}
@@ -57,7 +60,7 @@ func (s *SSHKeyOptions) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (s *SSHKeyOptions) View() string {
-	return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
 		headerView("Key Options", s.width),
 		s.list.View(),
 		footerView("Key Options", s.width)))
@@ -65,5 +68,9 @@ func (s *SSHKeyOptions) View() string {
 
 func (s *SSHKeyOptions) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
-	s.list.SetSize(width-4, height-7) // Adjust for margins and header/footer
+	s.list.SetSize(width, height)
+}
+
+func (s *SSHKeyOptions) Initialize() {
+	s.SetSize(s.width, s.height)
 }

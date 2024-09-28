@@ -13,7 +13,7 @@ type MainMenu struct {
 	list list.Model
 }
 
-func NewMainMenu() *MainMenu {
+func NewMainMenu(b baseState) *MainMenu {
 	items := []list.Item{
 		item{title: "Manage Config", desc: "Configure SSH Sync settings"},
 		item{title: "Manage SSH Keys", desc: "View and manage your SSH keys"},
@@ -21,7 +21,12 @@ func NewMainMenu() *MainMenu {
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Main Menu"
 	l.SetShowHelp(false)
-	return &MainMenu{list: l}
+	m := &MainMenu{
+		list:      l,
+		baseState: b,
+	}
+	m.Initialize()
+	return m
 }
 
 func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -34,12 +39,14 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 			i := m.list.SelectedItem().(item)
 			switch i.title {
 			case "Manage Config":
-				return NewConfigManager(), nil
+				return NewConfigManager(m.baseState), nil
 			case "Manage SSH Keys":
-				sshKeyManager, err := NewSSHKeyManager()
+				sshKeyManager, err := NewSSHKeyManager(m.baseState)
 				if err != nil {
-					return NewErrorState(err), nil
+					return NewErrorState(m.baseState, err), nil
 				}
+				sshKeyManager.height = m.height
+				sshKeyManager.width = m.width
 				return sshKeyManager, nil
 			}
 		}
@@ -50,13 +57,18 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (m *MainMenu) View() string {
-	return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
 		headerView("Main Menu", m.width),
 		m.list.View(),
-		footerView("Main Menu", m.width)))
+		footerView("Main Menu", m.width),
+	))
 }
 
 func (m *MainMenu) SetSize(width, height int) {
 	m.baseState.SetSize(width, height)
-	m.list.SetSize(width, height)
+	m.list.SetSize(width, height-5)
+}
+
+func (m *MainMenu) Initialize() {
+	m.SetSize(m.width, m.height)
 }

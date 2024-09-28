@@ -15,13 +15,16 @@ type SSHKeyContent struct {
 	key      dto.KeyDto
 }
 
-func NewSSHKeyContent(key dto.KeyDto) *SSHKeyContent {
+func NewSSHKeyContent(b baseState, key dto.KeyDto) *SSHKeyContent {
 	v := viewport.New(80, 20)
 	v.SetContent(string(key.Data))
-	return &SSHKeyContent{
-		viewport: v,
-		key:      key,
+	c := &SSHKeyContent{
+		viewport:  v,
+		key:       key,
+		baseState: b,
 	}
+	c.Initialize()
+	return c
 }
 
 func (s *SSHKeyContent) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -31,7 +34,7 @@ func (s *SSHKeyContent) Update(msg tea.Msg) (State, tea.Cmd) {
 			return s, tea.Quit
 		}
 		if msg.String() == "backspace" {
-			return NewSSHKeyOptions(s.key), nil
+			return NewSSHKeyOptions(s.baseState, s.key), nil
 		}
 	}
 	var cmd tea.Cmd
@@ -40,7 +43,7 @@ func (s *SSHKeyContent) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (s *SSHKeyContent) View() string {
-	return DocStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
 		headerView(s.key.Filename, s.width),
 		s.viewport.View(),
 		footerView("Key Content", s.width)))
@@ -48,6 +51,10 @@ func (s *SSHKeyContent) View() string {
 
 func (s *SSHKeyContent) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
-	s.viewport.Width = width - 4
-	s.viewport.Height = height - 7 // Adjust for margins and header/footer
+	s.viewport.Width = width
+	s.viewport.Height = height
+}
+
+func (s *SSHKeyContent) Initialize() {
+	s.SetSize(s.width, s.height)
 }

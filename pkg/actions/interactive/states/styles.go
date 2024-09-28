@@ -2,9 +2,8 @@ package states
 
 import "github.com/charmbracelet/lipgloss"
 
-var DocStyle = lipgloss.NewStyle()
-
 var (
+	AppStyle   = lipgloss.NewStyle().Padding(1, 2)
 	TitleStyle = func() lipgloss.Style {
 		b := lipgloss.RoundedBorder()
 		b.Right = "├"
