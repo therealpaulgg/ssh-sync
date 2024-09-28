@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
+	"github.com/therealpaulgg/ssh-sync/pkg/actions/interactive/states"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 
@@ -21,16 +21,8 @@ func Interactive(c *cli.Context) error {
 		fmt.Fprintln(os.Stderr, "ssh-sync has not been set up on this system. Please set up before continuing.")
 		return nil
 	}
-	profile, err := utils.GetProfile()
-	if err != nil {
-		return err
-	}
-	data, err := retrieval.GetUserData(profile)
-	if err != nil {
-		return err
-	}
 
-	model := NewModel(data)
+	model := states.NewModel()
 
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {

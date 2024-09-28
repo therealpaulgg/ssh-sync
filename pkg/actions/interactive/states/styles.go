@@ -1,8 +1,8 @@
-package interactive
+package states
 
 import "github.com/charmbracelet/lipgloss"
 
-var DocStyle = lipgloss.NewStyle().Margin(1, 2)
+var DocStyle = lipgloss.NewStyle()
 
 var (
 	TitleStyle = func() lipgloss.Style {
