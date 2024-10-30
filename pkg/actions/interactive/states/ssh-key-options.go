@@ -20,7 +20,7 @@ func NewSSHKeyOptions(b baseState, key dto.KeyDto) *SSHKeyOptions {
 	}
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Options for " + key.Filename
-	l.SetShowHelp(false)
+	// l.SetShowHelp(false)
 	s := &SSHKeyOptions{
 		list:        l,
 		selectedKey: key,

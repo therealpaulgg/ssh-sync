@@ -34,7 +34,6 @@ func NewSSHKeyManager(baseState baseState) (*SSHKeyManager, error) {
 
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "SSH Keys"
-	l.SetShowHelp(false)
 
 	m := &SSHKeyManager{
 		list:      l,
@@ -46,7 +45,7 @@ func NewSSHKeyManager(baseState baseState) (*SSHKeyManager, error) {
 }
 
 func (s *SSHKeyManager) PrettyName() string {
-	return "SSH Keys"
+	return s.list.Title
 }
 
 func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -56,10 +55,14 @@ func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
 		case "q", "ctrl+c":
 			return s, tea.Quit
 		case "enter":
-			selected := s.list.SelectedItem().(item)
-			return NewSSHKeyOptions(s.baseState, s.keys[selected.index]), nil
+			if !s.list.SettingFilter() {
+				selected := s.list.SelectedItem().(item)
+				return NewSSHKeyOptions(s.baseState, s.keys[selected.index]), nil
+			}
 		case "backspace":
-			return NewMainMenu(s.baseState), nil
+			if !s.list.SettingFilter() {
+				return NewMainMenu(s.baseState), nil
+			}
 		}
 	}
 	var cmd tea.Cmd

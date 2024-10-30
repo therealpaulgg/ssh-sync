@@ -17,7 +17,6 @@ func NewMainMenu(b baseState) *MainMenu {
 	}
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Main Menu"
-	l.SetShowHelp(false)
 	m := &MainMenu{
 		list:      l,
 		baseState: b,
@@ -27,7 +26,7 @@ func NewMainMenu(b baseState) *MainMenu {
 }
 
 func (m *MainMenu) PrettyName() string {
-	return "Main Menu"
+	return m.list.Title
 }
 
 func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
