@@ -32,7 +32,7 @@ func (e *ErrorState) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (e *ErrorState) View() string {
-	return AppStyle.Render(fmt.Sprintf("%s\n\n%s\n\n%s",
+	return (fmt.Sprintf("%s\n\n%s\n\n%s",
 		headerView("Error", e.width),
 		fmt.Sprintf("An error occurred: %v\nPress 'backspace' or 'q' to return to the main menu.", e.err),
 		footerView("Error", e.width)))

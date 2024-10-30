@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
@@ -63,16 +64,25 @@ func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
 	return s, cmd
 }
 
+func (s *SSHKeyManager) Header() string {
+	return headerView("SSH Keys", s.width)
+}
+
+func (s *SSHKeyManager) Footer() string {
+	return footerView("SSH Keys", s.width)
+}
+
 func (s *SSHKeyManager) View() string {
 	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		headerView("SSH Keys", s.width),
+		s.Header(),
 		s.list.View(),
-		footerView("SSH Keys", s.width)))
+		s.Footer(),
+	))
 }
 
 func (s *SSHKeyManager) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
-	s.list.SetSize(width, height)
+	s.list.SetSize(width, height-lipgloss.Height(s.Header())-lipgloss.Height(s.Footer()))
 }
 
 func (s *SSHKeyManager) Initialize() {

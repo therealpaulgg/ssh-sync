@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // ConfigManager
@@ -44,15 +45,25 @@ func (c *ConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
 	return c, cmd
 }
 
+func (c *ConfigManager) Header() string {
+	return headerView("Config Management", c.width)
+}
+
+func (c *ConfigManager) Footer() string {
+	return footerView("Config Management", c.width)
+}
+
 func (c *ConfigManager) View() string {
 	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		headerView("Config Management", c.width),
+		c.Header(),
 		c.list.View(),
-		footerView("Config Management", c.width)))
+		c.Footer(),
+	))
 }
 
 func (c *ConfigManager) SetSize(width, height int) {
-	c.list.SetSize(width, height)
+	c.baseState.SetSize(width, height)
+	c.list.SetSize(width, height-lipgloss.Height(c.Header())-lipgloss.Height(c.Footer()))
 }
 
 func (c *ConfigManager) Initialize() {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // MainMenu
@@ -56,17 +57,25 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *MainMenu) Header() string {
+	return headerView("Main Menu", m.width)
+}
+
+func (m *MainMenu) Footer() string {
+	return footerView("Main Menu", m.width)
+}
+
 func (m *MainMenu) View() string {
 	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		headerView("Main Menu", m.width),
+		m.Header(),
 		m.list.View(),
-		footerView("Main Menu", m.width),
+		m.Footer(),
 	))
 }
 
 func (m *MainMenu) SetSize(width, height int) {
 	m.baseState.SetSize(width, height)
-	m.list.SetSize(width, height-5)
+	m.list.SetSize(width, height-lipgloss.Height(m.Header())-lipgloss.Height(m.Footer()))
 }
 
 func (m *MainMenu) Initialize() {

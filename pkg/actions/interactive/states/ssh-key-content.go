@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 )
 
@@ -42,17 +43,25 @@ func (s *SSHKeyContent) Update(msg tea.Msg) (State, tea.Cmd) {
 	return s, cmd
 }
 
+func (s *SSHKeyContent) Header() string {
+	return headerView(s.key.Filename, s.width)
+}
+
+func (s *SSHKeyContent) Footer() string {
+	return footerView("Key Content", s.width)
+}
+
 func (s *SSHKeyContent) View() string {
 	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		headerView(s.key.Filename, s.width),
+		s.Header(),
 		s.viewport.View(),
-		footerView("Key Content", s.width)))
+		s.Footer()))
 }
 
 func (s *SSHKeyContent) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
 	s.viewport.Width = width
-	s.viewport.Height = height
+	s.viewport.Height = height - lipgloss.Height(s.Header()) - lipgloss.Height(s.Footer())
 }
 
 func (s *SSHKeyContent) Initialize() {

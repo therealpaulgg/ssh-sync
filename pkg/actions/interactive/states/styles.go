@@ -3,7 +3,11 @@ package states
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	AppStyle   = lipgloss.NewStyle().Padding(1, 2)
+	// using this is causing problems with rendering due to caching...WHY?!?!?!?!?!?
+	// if the layout shifts by even one character, previous screen's state may be displayed, resulting in glitches
+	AppStyle = func() lipgloss.Style {
+		return lipgloss.NewStyle().Padding(1, 2)
+	}()
 	TitleStyle = func() lipgloss.Style {
 		b := lipgloss.RoundedBorder()
 		b.Right = "├"
@@ -13,8 +17,10 @@ var (
 	InfoStyle = func() lipgloss.Style {
 		b := lipgloss.RoundedBorder()
 		b.Left = "┤"
-		return TitleStyle.Copy().BorderStyle(b)
+		return TitleStyle.BorderStyle(b)
 	}()
 
-	BasicColorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF00FF"))
+	BasicColorStyle = func() lipgloss.Style {
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#FF00FF"))
+	}()
 )
