@@ -53,6 +53,17 @@ func Download(c *cli.Context) error {
 			return err
 		}
 	}
+
+	err = checkForDeletedKeys(data.Keys, directory)
+
+	if err != nil {
+		return err
+	}
+	fmt.Println("Successfully downloaded keys.")
+	return nil
+}
+
+func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 	sshDir, err := utils.GetAndCreateSshDirectory(directory)
 	if err != nil {
 		return err
@@ -67,7 +78,7 @@ func Download(c *cli.Context) error {
 		if d.Name() == "config" {
 			return nil
 		}
-		_, exists := lo.Find(data.Keys, func(key dto.KeyDto) bool {
+		_, exists := lo.Find(keys, func(key dto.KeyDto) bool {
 			return key.Filename == d.Name()
 		})
 		if exists {
@@ -89,7 +100,5 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println("Successfully downloaded keys.")
 	return nil
 }
