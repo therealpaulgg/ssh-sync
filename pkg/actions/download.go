@@ -1,22 +1,21 @@
 package actions
 
 import (
-	"encoding/json"
-	"errors"
+	"bufio"
 	"fmt"
-	"net/http"
 	"os"
-	"strconv"
+	"path/filepath"
 
 	"github.com/samber/lo"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
+	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
 
 func Download(c *cli.Context) error {
-	setup, err := checkIfSetup()
+	setup, err := utils.CheckIfSetup()
 	if err != nil {
 		return err
 	}
@@ -28,38 +27,9 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	token, err := utils.GetToken()
+	data, err := retrieval.GetUserData(profile)
 	if err != nil {
 		return err
-	}
-	dataUrl := profile.ServerUrl
-	dataUrl.Path = "/api/v1/data"
-	req, err := http.NewRequest("GET", dataUrl.String(), nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Authorization", "Bearer "+token)
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != 200 {
-		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
-	}
-	var data dto.DataDto
-	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
-		return err
-	}
-	masterKey, err := utils.RetrieveMasterKey()
-	if err != nil {
-		return err
-	}
-	for i, key := range data.Keys {
-		decryptedKey, err := utils.DecryptWithMasterKey(key.Data, masterKey)
-		if err != nil {
-			return err
-		}
-		data.Keys[i].Data = decryptedKey
 	}
 	isSafeMode := c.Bool("safe-mode")
 	var directory string
@@ -83,6 +53,52 @@ func Download(c *cli.Context) error {
 			return err
 		}
 	}
+
+	err = checkForDeletedKeys(data.Keys, directory)
+
+	if err != nil {
+		return err
+	}
 	fmt.Println("Successfully downloaded keys.")
+	return nil
+}
+
+func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
+	sshDir, err := utils.GetAndCreateSshDirectory(directory)
+	if err != nil {
+		return err
+	}
+	err = filepath.WalkDir(sshDir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() == "config" {
+			return nil
+		}
+		_, exists := lo.Find(keys, func(key dto.KeyDto) bool {
+			return key.Filename == d.Name()
+		})
+		if exists {
+			return nil
+		}
+		fmt.Printf("Key %s detected on your filesystem that is not in the database. Delete? (y/n): ", d.Name())
+		var answer string
+		scanner := bufio.NewScanner(os.Stdin)
+		if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
+			return err
+		}
+		if answer == "y" {
+			if err := os.Remove(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }

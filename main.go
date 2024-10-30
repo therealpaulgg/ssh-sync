@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/therealpaulgg/ssh-sync/pkg/actions"
+	"github.com/therealpaulgg/ssh-sync/pkg/actions/interactive"
 	"github.com/urfave/cli/v2"
 )
 
@@ -45,8 +46,9 @@ func main() {
 				Action: actions.Download,
 			},
 			{
-				Name:   "challenge-response",
-				Action: actions.ChallengeResponse,
+				Name:      "challenge-response",
+				ArgsUsage: "[challenge-phrase]",
+				Action:    actions.ChallengeResponse,
 			},
 			{
 				Name:   "list-machines",
@@ -60,6 +62,12 @@ func main() {
 			{
 				Name:   "reset",
 				Action: actions.Reset,
+			},
+			{
+				Name:        "interactive",
+				Description: "Uses a TUI mode for interacting with keys and config",
+				Usage:       "Interactively manage your ssh keys with a TUI",
+				Action:      interactive.Interactive,
 			},
 		},
 	}

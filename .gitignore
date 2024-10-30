@@ -2,3 +2,4 @@ ssh-sync
 ssh-sync.exe
 ssh-sync-installer.exe
 win-build/Output/
+__debug_bin*

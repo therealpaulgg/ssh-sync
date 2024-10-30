@@ -28,24 +28,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func checkIfSetup() (bool, error) {
-	// check if ~/.ssh-sync/profile.json exists
-	// if it does, return true
-	// if it doesn't, return false
-	user, err := user.Current()
-	if err != nil {
-		return false, err
-	}
-	p := filepath.Join(user.HomeDir, ".ssh-sync", "profile.json")
-	if _, err := os.Stat(p); err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
 func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	pub := &priv.PublicKey
@@ -338,7 +320,7 @@ func Setup(c *cli.Context) error {
 	// there will be a profile.json file containing the machine name and the username
 	// there will also be a keypair.
 	// check if setup has been completed before
-	setup, err := checkIfSetup()
+	setup, err := utils.CheckIfSetup()
 	if err != nil {
 		return err
 	}

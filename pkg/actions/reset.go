@@ -16,7 +16,7 @@ import (
 )
 
 func Reset(c *cli.Context) error {
-	setup, err := checkIfSetup()
+	setup, err := utils.CheckIfSetup()
 	if err != nil {
 		return err
 	}
