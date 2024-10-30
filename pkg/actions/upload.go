@@ -76,6 +76,9 @@ func Upload(c *cli.Context) error {
 			if err != nil {
 				return err
 			}
+			if len(hosts) == 0 {
+				return errors.New("your ssh config is empty. Please add some hosts to your ssh config so data can be uploaded.")
+			}
 			continue
 		}
 		f, err := os.OpenFile(filepath.Join(p, file.Name()), os.O_RDONLY, 0600)

@@ -1,8 +1,10 @@
 package actions
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/samber/lo"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
@@ -51,6 +53,43 @@ func Download(c *cli.Context) error {
 			return err
 		}
 	}
+	sshDir, err := utils.GetAndCreateSshDirectory(directory)
+	if err != nil {
+		return err
+	}
+	err = filepath.WalkDir(sshDir, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() == "config" {
+			return nil
+		}
+		_, exists := lo.Find(data.Keys, func(key dto.KeyDto) bool {
+			return key.Filename == d.Name()
+		})
+		if exists {
+			return nil
+		}
+		fmt.Printf("Key %s detected on your filesystem that is not in the database. Delete? (y/n): ", d.Name())
+		var answer string
+		scanner := bufio.NewScanner(os.Stdin)
+		if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
+			return err
+		}
+		if answer == "y" {
+			if err := os.Remove(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	fmt.Println("Successfully downloaded keys.")
 	return nil
 }

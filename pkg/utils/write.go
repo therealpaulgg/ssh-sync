@@ -11,17 +11,28 @@ import (
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 )
 
+func GetAndCreateSshDirectory(sshDirectory string) (string, error) {
+	user, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	p := filepath.Join(user.HomeDir, sshDirectory)
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(p, 0700); err != nil {
+			return "", err
+		}
+	}
+	return p, nil
+}
+
 func WriteConfig(hosts []models.Host, sshDirectory string) error {
 	user, err := user.Current()
 	if err != nil {
 		return err
 	}
-	p := filepath.Join(user.HomeDir, sshDirectory)
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-
-		if err := os.MkdirAll(p, 0700); err != nil {
-			return err
-		}
+	p, err := GetAndCreateSshDirectory(sshDirectory)
+	if err != nil {
+		return err
 	}
 	file, err := os.OpenFile(filepath.Join(p, "config"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
@@ -51,15 +62,9 @@ func WriteConfig(hosts []models.Host, sshDirectory string) error {
 }
 
 func WriteKey(key []byte, filename string, sshDirectory string) error {
-	user, err := user.Current()
+	p, err := GetAndCreateSshDirectory(sshDirectory)
 	if err != nil {
 		return err
-	}
-	p := filepath.Join(user.HomeDir, sshDirectory)
-	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(p, 0700); err != nil {
-			return err
-		}
 	}
 	_, err = os.OpenFile(filepath.Join(p, filename), os.O_RDONLY, 0600)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {

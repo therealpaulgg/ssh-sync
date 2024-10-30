@@ -46,8 +46,9 @@ func main() {
 				Action: actions.Download,
 			},
 			{
-				Name:   "challenge-response",
-				Action: actions.ChallengeResponse,
+				Name:      "challenge-response",
+				ArgsUsage: "[challenge-phrase]",
+				Action:    actions.ChallengeResponse,
 			},
 			{
 				Name:   "list-machines",
