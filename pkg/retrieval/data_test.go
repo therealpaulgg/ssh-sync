@@ -52,3 +52,22 @@ func TestDownloadData(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(data.Keys))
 }
+
+func TestDeleteKey(t *testing.T) {
+	// Arrange
+	key := dto.KeyDto{
+		ID:       uuid.New(),
+		UserID:   uuid.New(),
+		Filename: "test",
+	}
+	profile := &models.Profile{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	url, _ := url.Parse(server.URL)
+	profile.ServerUrl = *url
+	// Act
+	err := DeleteKey(profile, key)
+	// Assert
+	assert.Nil(t, err)
+}

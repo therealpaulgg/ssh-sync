@@ -5,6 +5,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
+	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
 
 // DeleteSSHKey
@@ -33,7 +35,10 @@ func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
 		case "q", "ctrl+c":
 			return d, tea.Quit
 		case "y", "Y":
-			// Implement key deletion logic here
+			err := d.deleteKey()
+			if err != nil {
+				return NewErrorState(d.baseState, err), nil
+			}
 			sshKeyManager, err := NewSSHKeyManager(d.baseState)
 			if err != nil {
 				return NewErrorState(d.baseState, err), nil
@@ -44,6 +49,15 @@ func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
 		}
 	}
 	return d, nil
+}
+
+func (d *DeleteSSHKey) deleteKey() error {
+	profile, err := utils.GetProfile()
+	if err != nil {
+		return err
+	}
+	err = retrieval.DeleteKey(profile, d.key)
+	return err
 }
 
 func (d *DeleteSSHKey) View() string {
