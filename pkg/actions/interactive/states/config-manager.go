@@ -1,11 +1,8 @@
 package states
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // ConfigManager
@@ -30,6 +27,10 @@ func NewConfigManager(b baseState) *ConfigManager {
 	return c
 }
 
+func (c *ConfigManager) PrettyName() string {
+	return "Config Management"
+}
+
 func (c *ConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -45,25 +46,13 @@ func (c *ConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
 	return c, cmd
 }
 
-func (c *ConfigManager) Header() string {
-	return headerView("Config Management", c.width)
-}
-
-func (c *ConfigManager) Footer() string {
-	return footerView("Config Management", c.width)
-}
-
 func (c *ConfigManager) View() string {
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		c.Header(),
-		c.list.View(),
-		c.Footer(),
-	))
+	return c.list.View()
 }
 
 func (c *ConfigManager) SetSize(width, height int) {
 	c.baseState.SetSize(width, height)
-	c.list.SetSize(width, height-lipgloss.Height(c.Header())-lipgloss.Height(c.Footer()))
+	c.list.SetSize(width, height)
 }
 
 func (c *ConfigManager) Initialize() {

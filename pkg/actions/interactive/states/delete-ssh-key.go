@@ -22,6 +22,10 @@ func NewDeleteSSHKey(b baseState, key dto.KeyDto) *DeleteSSHKey {
 	return d
 }
 
+func (d *DeleteSSHKey) PrettyName() string {
+	return "Delete Key"
+}
+
 func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -42,26 +46,13 @@ func (d *DeleteSSHKey) Update(msg tea.Msg) (State, tea.Cmd) {
 	return d, nil
 }
 
-func (d *DeleteSSHKey) Header() string {
-	return headerView("Delete Key", d.width)
-}
-
-func (d *DeleteSSHKey) Footer() string {
-	return footerView("Delete Key", d.width)
-}
-
 func (d *DeleteSSHKey) View() string {
 	content := fmt.Sprintf("Are you sure you want to delete the key %s? (y/n)", d.key.Filename)
-	return AppStyle.Render(fmt.Sprintf("%s\n\n%s\n\n%s",
-		d.Header(),
-		content,
-		d.Footer(),
-	))
+	return content
 }
 
 func (d *DeleteSSHKey) SetSize(width, height int) {
 	d.baseState.SetSize(width, height)
-	// d.list.SetSize(width, height-lipgloss.Height(d.Header())-lipgloss.Height(d.Footer()))
 }
 
 func (d *DeleteSSHKey) Initialize() {

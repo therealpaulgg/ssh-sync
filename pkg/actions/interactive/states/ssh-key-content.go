@@ -1,11 +1,8 @@
 package states
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 )
 
@@ -28,6 +25,10 @@ func NewSSHKeyContent(b baseState, key dto.KeyDto) *SSHKeyContent {
 	return c
 }
 
+func (s *SSHKeyContent) PrettyName() string {
+	return "Key Content"
+}
+
 func (s *SSHKeyContent) Update(msg tea.Msg) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -43,25 +44,14 @@ func (s *SSHKeyContent) Update(msg tea.Msg) (State, tea.Cmd) {
 	return s, cmd
 }
 
-func (s *SSHKeyContent) Header() string {
-	return headerView(s.key.Filename, s.width)
-}
-
-func (s *SSHKeyContent) Footer() string {
-	return footerView("Key Content", s.width)
-}
-
 func (s *SSHKeyContent) View() string {
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		s.Header(),
-		s.viewport.View(),
-		s.Footer()))
+	return s.viewport.View()
 }
 
 func (s *SSHKeyContent) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
 	s.viewport.Width = width
-	s.viewport.Height = height - lipgloss.Height(s.Header()) - lipgloss.Height(s.Footer())
+	s.viewport.Height = height
 }
 
 func (s *SSHKeyContent) Initialize() {

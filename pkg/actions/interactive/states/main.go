@@ -1,7 +1,10 @@
 package states
 
 import (
+	"fmt"
+
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Model struct {
@@ -25,7 +28,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		h, v := AppStyle.GetFrameSize()
-		adjustedWidth, adjustedHeight := msg.Width-h, msg.Height-v
+		headerAndFooterHeight := lipgloss.Height(m.Header()) + lipgloss.Height(m.Footer())
+		adjustedWidth, adjustedHeight := msg.Width-h, msg.Height-v-headerAndFooterHeight
 		m.width = adjustedWidth
 		m.height = adjustedHeight
 		m.currentState.SetSize(m.width, m.height)
@@ -34,6 +38,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m Model) Header() string {
+	return headerView(m.currentState.PrettyName(), m.width)
+}
+
+func (m Model) Footer() string {
+	return footerView(m.currentState.PrettyName(), m.width)
+}
+
 func (m Model) View() string {
-	return m.currentState.View()
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+		m.Header(),
+		m.currentState.View(),
+		m.Footer(),
+	))
+	// return m.currentState.View()
 }

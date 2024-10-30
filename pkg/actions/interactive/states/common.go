@@ -24,6 +24,7 @@ type State interface {
 	View() string
 	SetSize(width, height int)
 	Initialize()
+	PrettyName() string
 }
 
 // Init code that should be always run after a new state is created

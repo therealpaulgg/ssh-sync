@@ -5,7 +5,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
@@ -46,6 +45,10 @@ func NewSSHKeyManager(baseState baseState) (*SSHKeyManager, error) {
 	return m, nil
 }
 
+func (s *SSHKeyManager) PrettyName() string {
+	return "SSH Keys"
+}
+
 func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -64,25 +67,13 @@ func (s *SSHKeyManager) Update(msg tea.Msg) (State, tea.Cmd) {
 	return s, cmd
 }
 
-func (s *SSHKeyManager) Header() string {
-	return headerView("SSH Keys", s.width)
-}
-
-func (s *SSHKeyManager) Footer() string {
-	return footerView("SSH Keys", s.width)
-}
-
 func (s *SSHKeyManager) View() string {
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		s.Header(),
-		s.list.View(),
-		s.Footer(),
-	))
+	return s.list.View()
 }
 
 func (s *SSHKeyManager) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
-	s.list.SetSize(width, height-lipgloss.Height(s.Header())-lipgloss.Height(s.Footer()))
+	s.list.SetSize(width, height)
 }
 
 func (s *SSHKeyManager) Initialize() {

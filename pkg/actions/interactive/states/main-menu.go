@@ -1,11 +1,8 @@
 package states
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // MainMenu
@@ -28,6 +25,10 @@ func NewMainMenu(b baseState) *MainMenu {
 	}
 	m.Initialize()
 	return m
+}
+
+func (m *MainMenu) PrettyName() string {
+	return "Main Menu"
 }
 
 func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -57,25 +58,13 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *MainMenu) Header() string {
-	return headerView("Main Menu", m.width)
-}
-
-func (m *MainMenu) Footer() string {
-	return footerView("Main Menu", m.width)
-}
-
 func (m *MainMenu) View() string {
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		m.Header(),
-		m.list.View(),
-		m.Footer(),
-	))
+	return m.list.View()
 }
 
 func (m *MainMenu) SetSize(width, height int) {
 	m.baseState.SetSize(width, height)
-	m.list.SetSize(width, height-lipgloss.Height(m.Header())-lipgloss.Height(m.Footer()))
+	m.list.SetSize(width, height)
 }
 
 func (m *MainMenu) Initialize() {

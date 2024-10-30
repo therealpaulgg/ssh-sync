@@ -1,11 +1,8 @@
 package states
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 )
 
@@ -31,6 +28,10 @@ func NewSSHKeyOptions(b baseState, key dto.KeyDto) *SSHKeyOptions {
 	}
 	s.Initialize()
 	return s
+}
+
+func (s *SSHKeyOptions) PrettyName() string {
+	return "Key Options"
 }
 
 func (s *SSHKeyOptions) Update(msg tea.Msg) (State, tea.Cmd) {
@@ -60,25 +61,13 @@ func (s *SSHKeyOptions) Update(msg tea.Msg) (State, tea.Cmd) {
 	return s, cmd
 }
 
-func (s *SSHKeyOptions) Header() string {
-	return headerView("Key Options", s.width)
-}
-
-func (s *SSHKeyOptions) Footer() string {
-	return footerView("Key Options", s.width)
-}
-
 func (s *SSHKeyOptions) View() string {
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
-		s.Header(),
-		s.list.View(),
-		s.Footer(),
-	))
+	return s.list.View()
 }
 
 func (s *SSHKeyOptions) SetSize(width, height int) {
 	s.baseState.SetSize(width, height)
-	s.list.SetSize(width, height-lipgloss.Height(s.Header())-lipgloss.Height(s.Footer()))
+	s.list.SetSize(width, height)
 }
 
 func (s *SSHKeyOptions) Initialize() {

@@ -21,6 +21,10 @@ func NewErrorState(b baseState, err error) *ErrorState {
 	return e
 }
 
+func (e *ErrorState) PrettyName() string {
+	return "Error"
+}
+
 func (e *ErrorState) Update(msg tea.Msg) (State, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -32,8 +36,5 @@ func (e *ErrorState) Update(msg tea.Msg) (State, tea.Cmd) {
 }
 
 func (e *ErrorState) View() string {
-	return (fmt.Sprintf("%s\n\n%s\n\n%s",
-		headerView("Error", e.width),
-		fmt.Sprintf("An error occurred: %v\nPress 'backspace' or 'q' to return to the main menu.", e.err),
-		footerView("Error", e.width)))
+	return fmt.Sprintf("An error occurred: %v\nPress 'backspace' or 'q' to return to the main menu.", e.err)
 }
