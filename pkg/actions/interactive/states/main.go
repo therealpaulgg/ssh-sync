@@ -52,5 +52,4 @@ func (m Model) View() string {
 		m.currentState.View(),
 		m.Footer(),
 	))
-	// return m.currentState.View()
 }

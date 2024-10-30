@@ -13,7 +13,6 @@ type MainMenu struct {
 
 func NewMainMenu(b baseState) *MainMenu {
 	items := []list.Item{
-		item{title: "Manage Config", desc: "Configure SSH Sync settings"},
 		item{title: "Manage SSH Keys", desc: "View and manage your SSH keys"},
 	}
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
@@ -40,8 +39,6 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 		case "enter":
 			i := m.list.SelectedItem().(item)
 			switch i.title {
-			case "Manage Config":
-				return NewConfigManager(m.baseState), nil
 			case "Manage SSH Keys":
 				sshKeyManager, err := NewSSHKeyManager(m.baseState)
 				if err != nil {
