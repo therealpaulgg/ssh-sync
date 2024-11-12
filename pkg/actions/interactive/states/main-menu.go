@@ -11,9 +11,13 @@ type MainMenu struct {
 	list list.Model
 }
 
+var manageSshKeysTitle = "Manage SSH Keys"
+var manageSshConfigTitle = "Manage SSH Configuration"
+
 func NewMainMenu(b baseState) *MainMenu {
 	items := []list.Item{
-		item{title: "Manage SSH Keys", desc: "View and manage your SSH keys"},
+		item{title: manageSshKeysTitle, desc: "View and manage your SSH keys"},
+		item{title: manageSshConfigTitle, desc: "View and manage your SSH configuration"},
 	}
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Main Menu"
@@ -38,7 +42,7 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 		case "enter":
 			i := m.list.SelectedItem().(item)
 			switch i.title {
-			case "Manage SSH Keys":
+			case manageSshKeysTitle:
 				sshKeyManager, err := NewSSHKeyManager(m.baseState)
 				if err != nil {
 					return NewErrorState(m.baseState, err), nil
@@ -46,6 +50,14 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 				sshKeyManager.height = m.height
 				sshKeyManager.width = m.width
 				return sshKeyManager, nil
+			case manageSshConfigTitle:
+				sshConfigManager, err := NewSSHConfigManager(m.baseState)
+				if err != nil {
+					return NewErrorState(m.baseState, err), nil
+				}
+				sshConfigManager.height = m.height
+				sshConfigManager.width = m.width
+				return sshConfigManager, nil
 			}
 		}
 	}
