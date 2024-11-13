@@ -1,6 +1,6 @@
 module github.com/therealpaulgg/ssh-sync
 
-go 1.21
+go 1.23
 
 require (
 	github.com/gobwas/ws v1.1.0

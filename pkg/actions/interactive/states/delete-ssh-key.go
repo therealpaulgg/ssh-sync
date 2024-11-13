@@ -57,6 +57,7 @@ func (d *DeleteSSHKey) deleteKey() error {
 		return err
 	}
 	err = retrieval.DeleteKey(profile, d.key)
+	// TODO - shouldn't we delete the key from the PC too?
 	return err
 }
 

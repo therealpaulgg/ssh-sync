@@ -70,3 +70,25 @@ func DeleteKey(profile *models.Profile, key dto.KeyDto) error {
 	}
 	return nil
 }
+
+func DeleteConfig(profile *models.Profile, config dto.SshConfigDto) error {
+	token, err := utils.GetToken()
+	if err != nil {
+		return err
+	}
+	dataUrl := profile.ServerUrl
+	dataUrl.Path = fmt.Sprintf("/api/v1/data/config/%s", config.ID)
+	req, err := http.NewRequest("DELETE", dataUrl.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if res.StatusCode != 200 {
+		return errors.New("failed to delete data. status code: " + strconv.Itoa(res.StatusCode))
+	}
+	return nil
+}

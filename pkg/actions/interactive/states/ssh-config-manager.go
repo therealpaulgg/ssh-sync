@@ -2,6 +2,8 @@ package states
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -28,16 +30,13 @@ func NewSSHConfigManager(baseState baseState) (*SSHConfigManager, error) {
 	}
 
 	items := make([]list.Item, len(data.SshConfig))
+	slices.SortStableFunc(data.SshConfig, func(a dto.SshConfigDto, b dto.SshConfigDto) int {
+		return strings.Compare(a.Host, b.Host)
+	})
 	for i, key := range data.SshConfig {
 		items[i] = item{title: key.Host, desc: "", index: i}
 	}
 
-	// Discovered a problem with the current implementation of the data
-	// For whatever reason the ssh config has a hard dependency on a machine_id
-	// This is causing duplicate ssh config host/keypairs to be created
-	// Doesn't really make any sense, we should be trying to sync these across
-	// all machines and not have any duplicates
-	// How to resolve?
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "SSH Config Entries"
 
@@ -61,10 +60,10 @@ func (s *SSHConfigManager) Update(msg tea.Msg) (State, tea.Cmd) {
 		case "q", "ctrl+c":
 			return s, tea.Quit
 		case "enter":
-			// if !s.list.SettingFilter() {
-			// 	selected := s.list.SelectedItem().(item)
-			// 	// return NewSSHKeyOptions(s.baseState, s.config[selected.index]), nil
-			// }
+			if !s.list.SettingFilter() {
+				selected := s.list.SelectedItem().(item)
+				return NewSSHConfigOptions(s.baseState, s.config[selected.index]), nil
+			}
 		case "backspace":
 			if !s.list.SettingFilter() {
 				return NewMainMenu(s.baseState), nil
