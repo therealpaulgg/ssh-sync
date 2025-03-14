@@ -48,7 +48,7 @@ jobs:
           & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
         shell: powershell
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ssh-sync-setup
           path: ./win-build/Output/ssh-sync-setup.exe
@@ -63,7 +63,7 @@ jobs:
       - name: Go Build
         run: go build -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ssh-sync
           path: ./ssh-sync
@@ -85,7 +85,7 @@ jobs:
           fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync=/usr/local/bin/ssh-sync
       - name: Upload Linux Packages
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: packages
           path: |
