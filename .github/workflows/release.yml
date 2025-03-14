@@ -97,7 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
