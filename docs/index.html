@@ -13,18 +13,19 @@
 <span class="hljs-keyword">brew </span>install ssh-sync
 </code></pre>
 <h4 id="linux">Linux</h4>
-<p>For Linux users, download the appropriate package from our <a href="https://github.com/therealpaulgg/ssh-sync/releases">GitHub Releases</a> page:</p>
+<p>Binary packages are available from our package repository at <a href="https://packages.sshsync.io">packages.sshsync.io</a>, which is served from our self-hosted package server. See <a href="./package-server.md">package-server.md</a> for hosting instructions.</p>
 <ul>
-<li>For Debian-based distributions (e.g., Ubuntu):</li>
+<li><strong>Debian-based distributions (e.g., Ubuntu):</strong></li>
 </ul>
-<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.deb-file</span>&gt;
-<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">dpkg</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync_0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8_amd64</span><span class="hljs-selector-class">.deb</span>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">echo</span> "deb [trusted=yes] https://packages.sshsync.io/deb stable main" | <span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">tee</span> /etc/apt/sources.list.d/ssh-sync.list
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">apt</span> <span class="hljs-selector-tag">update</span>
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">apt</span> <span class="hljs-selector-tag">install</span> ssh-sync
 </code></pre>
 <ul>
-<li>For RPM-based distributions (e.g., Fedora, CentOS):</li>
+<li><strong>RPM-based distributions (e.g., Fedora, CentOS):</strong></li>
 </ul>
-<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.rpm-file</span>&gt;
-<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">rpm</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync-v0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8-1</span><span class="hljs-selector-class">.x86_64</span><span class="hljs-selector-class">.rpm</span>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">dnf</span> <span class="hljs-selector-tag">config-manager</span> --add-repo https://packages.sshsync.io/rpm/ssh-sync.repo
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">dnf</span> <span class="hljs-selector-tag">install</span> ssh-sync
 </code></pre>
 <h2 id="getting-started-with-ssh-sync">Getting Started with SSH-Sync</h2>
 <p>SSH-Sync makes managing and syncing your SSH keys across multiple machines effortless. Here&#39;s how to get started:</p>

@@ -68,10 +68,10 @@ jobs:
           name: ssh-sync
           path: ./ssh-sync
           retention-days: 5
-      - name: Install FPM
+      - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
+          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm dpkg-dev apt-utils createrepo-c
           sudo gem install --no-document fpm
 
       - name: Create a .deb package
@@ -91,6 +91,31 @@ jobs:
           path: |
             *.deb
             *.rpm
+      - name: Import GPG key
+        run: |
+          mkdir -p ~/.gnupg
+          echo "${{ secrets.PACKAGE_GPG_KEY }}" | gpg --batch --import
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent
+
+      - name: Build package repository
+        run: |
+          mkdir -p repo/deb repo/rpm
+          cp *.deb repo/deb/
+          apt-ftparchive packages repo/deb > repo/deb/Packages
+          gzip -c repo/deb/Packages > repo/deb/Packages.gz
+          apt-ftparchive release repo/deb > repo/deb/Release
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.PACKAGE_GPG_PASSPHRASE }}" -o repo/deb/Release.gpg -ba repo/deb/Release
+          gpg --batch --yes --armor --export > repo/public.key
+          cp *.rpm repo/rpm/
+          createrepo-c repo/rpm
+          gpg --batch --yes --pinentry-mode loopback --passphrase "${{ secrets.PACKAGE_GPG_PASSPHRASE }}" --detach-sign --armor repo/rpm/repodata/repomd.xml
+      - name: Upload Repository
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo
+          path: repo
+          retention-days: 5
   release:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
@@ -102,3 +127,24 @@ jobs:
         with:
           artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
           token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
+
+  upload-repo:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download repository artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: repo
+          path: repo
+      - name: Upload repository to host
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.PACKAGE_HOST }}
+          username: ${{ secrets.PACKAGE_HOST_USER }}
+          key: ${{ secrets.PACKAGE_HOST_KEY }}
+          source: "repo/*"
+          target: ${{ secrets.PACKAGE_TARGET_DIR }}
+          strip_components: 1
+          rm: true

@@ -30,20 +30,21 @@ brew install ssh-sync
 
 #### Linux
 
-For Linux users, download the appropriate package from our [GitHub Releases](https://github.com/therealpaulgg/ssh-sync/releases) page:
+Binary packages for Linux are hosted in our repository at [packages.sshsync.io](https://packages.sshsync.io), which is served from our self-hosted package server.
 
-- For Debian-based distributions (e.g., Ubuntu):
+- **Debian-based distributions (e.g., Ubuntu):**
 
 ```shell
-wget <link-to-.deb-file>
-sudo dpkg -i ssh-sync_0.3.8_amd64.deb
+echo "deb [trusted=yes] https://packages.sshsync.io/deb stable main" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
+sudo apt update
+sudo apt install ssh-sync
 ```
 
-- For RPM-based distributions (e.g., Fedora, CentOS):
+- **RPM-based distributions (e.g., Fedora, CentOS):**
 
 ```shell
-wget <link-to-.rpm-file>
-sudo rpm -i ssh-sync-v0.3.8-1.x86_64.rpm
+sudo dnf config-manager --add-repo https://packages.sshsync.io/rpm/ssh-sync.repo
+sudo dnf install ssh-sync
 ```
 
 ## Getting Started with SSH-Sync
@@ -223,8 +224,12 @@ server {
 
 If you don't want to use docker, other methods of running are not supported at this time, but the source repos are linked below so you can configure your own server as you wish.
 
-[ssh-sync-server Github](https://github.com/therealpaulgg/ssh-sync-server) 
+[ssh-sync-server Github](https://github.com/therealpaulgg/ssh-sync-server)
 [ssh-sync-db](https://github.com/therealpaulgg/ssh-sync-db)
+
+### Hosting the Package Repository
+
+To serve the Debian and RPM packages from your own server, set up a web server (for example, Nginx) and copy the `repo` directory produced in the release workflow to a public location. Ensure the exported `public.key` is available so clients can import it. The release workflow uploads the repository to the server using SSH credentials from the repository secrets. See [docs/package-server.md](docs/package-server.md) for a more detailed walkthrough.
 
 ## How ssh-sync Works
 
