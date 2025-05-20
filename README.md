@@ -239,6 +239,7 @@ For a deep dive into the technicalities of ssh-sync, including its security mode
 - **Simplify SSH Key Management:** Easily sync your SSH keys and configurations across all your devices.
 - **Enhanced Security:** ssh-sync uses advanced cryptographic techniques to ensure your SSH keys are securely transmitted and stored.
 - **Effortless Setup:** With support for Windows, macOS, and Linux, setting up ssh-sync is straightforward, regardless of your operating system.
+- **Known Hosts Sync:** Each entry from your `known_hosts` file is stored individually so machines can rebuild a complete file when downloading.
 
 ## Contributing
 

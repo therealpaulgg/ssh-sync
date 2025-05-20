@@ -48,6 +48,9 @@ func Download(c *cli.Context) error {
 	}), directory); err != nil {
 		return err
 	}
+	if err := utils.WriteKnownHosts(data.KnownHosts, directory); err != nil {
+		return err
+	}
 	for _, key := range data.Keys {
 		if err := utils.WriteKey(key.Data, key.Filename, directory); err != nil {
 			return err

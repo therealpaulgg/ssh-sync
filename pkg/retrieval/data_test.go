@@ -41,6 +41,7 @@ func TestDownloadData(t *testing.T) {
 						IdentityFiles: []string{"test"},
 					},
 				},
+				KnownHosts: []string{"hostkey"},
 			},
 		})
 	}))

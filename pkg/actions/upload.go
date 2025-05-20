@@ -68,6 +68,10 @@ func Upload(c *cli.Context) error {
 		return err
 	}
 	hosts := []models.Host{}
+	knownHosts, err := utils.ParseKnownHosts()
+	if err != nil {
+		return err
+	}
 	for _, file := range data {
 		if file.IsDir() || file.Name() == "authorized_keys" {
 			continue
@@ -105,6 +109,19 @@ func Upload(c *cli.Context) error {
 			return err
 		}
 		w, err := multipartWriter.CreateFormField("ssh_config")
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(jsonBytes); err != nil {
+			return err
+		}
+	}
+	if len(knownHosts) > 0 {
+		jsonBytes, err := json.Marshal(knownHosts)
+		if err != nil {
+			return err
+		}
+		w, err := multipartWriter.CreateFormField("known_hosts")
 		if err != nil {
 			return err
 		}
