@@ -53,44 +53,66 @@ jobs:
           name: ssh-sync-setup
           path: ./win-build/Output/ssh-sync-setup.exe
           retention-days: 5
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ">=1.19.7"
-      - name: Go Build
-        run: go build -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-sync
-          path: ./ssh-sync
-          retention-days: 5
-      - name: Install FPM
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
-          sudo gem install --no-document fpm
+build-linux:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ">=1.19.7"
+    - name: Build binaries
+      run: |
+        GOOS=linux GOARCH=amd64 go build -o ssh-sync-amd64 -ldflags "-X main.version=${{github.ref_name}}"
+        GOOS=linux GOARCH=arm64 go build -o ssh-sync-arm64 -ldflags "-X main.version=${{github.ref_name}}"
+        cp ssh-sync-amd64 ssh-sync
+    - name: Upload linux binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: ssh-sync
+        path: ./ssh-sync
+        retention-days: 5
+    - name: Install packaging tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm dpkg-dev createrepo
+        sudo gem install --no-document fpm
+    - name: Create packages
+      run: |
+        mkdir -p packages
+        fpm -s dir -t deb -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --architecture amd64 --deb-no-default-config-files \
+          ssh-sync-amd64=/usr/local/bin/ssh-sync \
+          -p packages/ssh-sync_${{ github.ref_name }}_amd64.deb
+        fpm -s dir -t deb -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --architecture arm64 --deb-no-default-config-files \
+          ssh-sync-arm64=/usr/local/bin/ssh-sync \
+          -p packages/ssh-sync_${{ github.ref_name }}_arm64.deb
+        fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --architecture amd64 \
+          ssh-sync-amd64=/usr/local/bin/ssh-sync \
+          -p packages/ssh-sync-${{ github.ref_name }}-1.x86_64.rpm
+        fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --architecture arm64 \
+          ssh-sync-arm64=/usr/local/bin/ssh-sync \
+          -p packages/ssh-sync-${{ github.ref_name }}-1.aarch64.rpm
+    - name: Create package repository
+      run: |
+        ./scripts/create-repo.sh repo
+    - name: Upload Linux Packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: |
+          packages/*.deb
+          packages/*.rpm
+        retention-days: 5
+    - name: Upload Repo
+      uses: actions/upload-artifact@v4
+      with:
+        name: package-repo
+        path: repo
+        retention-days: 5
 
-      - name: Create a .deb package
-        run: |
-          fpm -s dir -t deb -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          --deb-no-default-config-files \
-          ./ssh-sync=/usr/local/bin/ssh-sync
-
-      - name: Create an .rpm package
-        run: |
-          fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          ./ssh-sync=/usr/local/bin/ssh-sync
-      - name: Upload Linux Packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages
-          path: |
-            *.deb
-            *.rpm
   release:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
@@ -100,5 +122,5 @@ jobs:
         uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
+          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm,./repo/**"
           token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
