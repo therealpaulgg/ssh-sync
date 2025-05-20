@@ -30,20 +30,29 @@ brew install ssh-sync
 
 #### Linux
 
-For Linux users, download the appropriate package from our [GitHub Releases](https://github.com/therealpaulgg/ssh-sync/releases) page:
+Packages for both <code>amd64</code> and <code>arm64</code> architectures are published to
+our custom package repository at <code>https://packages.sshsync.io</code>.
 
-- For Debian-based distributions (e.g., Ubuntu):
+First install the repository signing key:
 
 ```shell
-wget <link-to-.deb-file>
-sudo dpkg -i ssh-sync_0.3.8_amd64.deb
+curl -fsSL https://packages.sshsync.io/ssh-sync.asc | sudo tee /usr/share/keyrings/ssh-sync.gpg >/dev/null
 ```
 
-- For RPM-based distributions (e.g., Fedora, CentOS):
+For Debian-based distributions (e.g., Ubuntu) add the repository and install:
 
 ```shell
-wget <link-to-.rpm-file>
-sudo rpm -i ssh-sync-v0.3.8-1.x86_64.rpm
+echo "deb [signed-by=/usr/share/keyrings/ssh-sync.gpg] https://packages.sshsync.io/deb stable main" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
+sudo apt update
+sudo apt install ssh-sync
+```
+
+For RPM-based distributions (e.g., Fedora, CentOS) use:
+
+```shell
+sudo rpm --import https://packages.sshsync.io/ssh-sync.asc
+sudo dnf config-manager --add-repo https://packages.sshsync.io/rpm/ssh-sync.repo
+sudo dnf install ssh-sync
 ```
 
 ## Getting Started with SSH-Sync
@@ -145,6 +154,8 @@ By following these steps, you can seamlessly sync and manage your SSH keys acros
 ## Self-Hosting ssh-sync-server
 
 In general, for self-hosting, we recommend a setup where ssh-sync-server is behind a reverse proxy (i.e Nginx), and SSL is handled via LetsEncrypt.
+
+To host the Debian and RPM repositories yourself, see <a href="docs/server-setup.md">docs/server-setup.md</a>.
 
 ### Docker
 
