@@ -46,6 +46,27 @@ wget <link-to-.rpm-file>
 sudo rpm -i ssh-sync-v0.3.8-1.x86_64.rpm
 ```
 
+- For Alpine Linux:
+
+```shell
+wget <link-to-.apk-file>
+sudo apk add --allow-untrusted ssh-sync_0.3.8_amd64.apk
+```
+
+- For Arch-based distributions (e.g., Arch Linux, Manjaro):
+
+```shell
+wget <link-to-.tar.zst-file>
+sudo pacman -U ssh-sync-0.3.8-1-x86_64.tar.zst
+```
+
+We provide packages for multiple architectures including:
+- x86_64 (amd64)
+- ARM64 (aarch64)
+- ARMv7
+
+Choose the appropriate package for your system architecture.
+
 ## Getting Started with SSH-Sync
 
 SSH-Sync makes managing and syncing your SSH keys across multiple machines effortless. Here's how to get started:

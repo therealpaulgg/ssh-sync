@@ -26,6 +26,19 @@
 <pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.rpm-file</span>&gt;
 <span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">rpm</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync-v0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8-1</span><span class="hljs-selector-class">.x86_64</span><span class="hljs-selector-class">.rpm</span>
 </code></pre>
+<ul>
+<li>For Alpine Linux:</li>
+</ul>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.apk-file</span>&gt;
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">apk</span> <span class="hljs-selector-tag">add</span> <span class="hljs-selector-tag">--allow-untrusted</span> <span class="hljs-selector-tag">ssh-sync_0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8_amd64</span><span class="hljs-selector-class">.apk</span>
+</code></pre>
+<ul>
+<li>For Arch-based distributions (e.g., Arch Linux, Manjaro):</li>
+</ul>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.tar.zst-file</span>&gt;
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">pacman</span> <span class="hljs-selector-tag">-U</span> <span class="hljs-selector-tag">ssh-sync-0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8-1-x86_64</span><span class="hljs-selector-class">.tar.zst</span>
+</code></pre>
+<p>We provide packages for multiple architectures including x86_64 (amd64), ARM64 (aarch64), and ARMv7. Choose the appropriate package for your system architecture.</p>
 <h2 id="getting-started-with-ssh-sync">Getting Started with SSH-Sync</h2>
 <p>SSH-Sync makes managing and syncing your SSH keys across multiple machines effortless. Here&#39;s how to get started:</p>
 <h3 id="setup">Setup</h3>
