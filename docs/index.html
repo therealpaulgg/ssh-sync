@@ -13,30 +13,63 @@
 <span class="hljs-keyword">brew </span>install ssh-sync
 </code></pre>
 <h4 id="linux">Linux</h4>
-<p>For Linux users, download the appropriate package from our <a href="https://github.com/therealpaulgg/ssh-sync/releases">GitHub Releases</a> page:</p>
+<p>For Linux users, you can install ssh-sync through our official package repositories or by downloading packages directly from our <a href="https://github.com/therealpaulgg/ssh-sync/releases">GitHub Releases</a> page:</p>
+
+<h5 id="using-the-official-repository">Using the Official Repository</h5>
+
+<h6 id="debian-ubuntu-and-derivatives">Debian/Ubuntu and derivatives:</h6>
+
+<pre><code class="lang-shell"># Add the repository
+echo "deb [trusted=yes] https://repo.sshsync.io/debian $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
+
+# Update package lists
+sudo apt update
+
+# Install ssh-sync
+sudo apt install ssh-sync
+</code></pre>
+
+<h6 id="fedora-rhel-centos-and-derivatives">Fedora/RHEL/CentOS and derivatives:</h6>
+
+<pre><code class="lang-shell"># Add the repository
+cat <<EOF | sudo tee /etc/yum.repos.d/ssh-sync.repo
+[ssh-sync]
+name=SSH-Sync Repository
+baseurl=https://repo.sshsync.io/rpm
+enabled=1
+gpgcheck=0
+EOF
+
+# Install ssh-sync
+sudo dnf install ssh-sync
+</code></pre>
+
+<h5 id="manual-installation">Manual Installation</h5>
+
+<p>If you prefer to download and install the package manually:</p>
 <ul>
 <li>For Debian-based distributions (e.g., Ubuntu):</li>
 </ul>
-<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.deb-file</span>&gt;
-<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">dpkg</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync_0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8_amd64</span><span class="hljs-selector-class">.deb</span>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync_VERSION_ARCH.deb
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">dpkg</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync_VERSION_ARCH</span><span class="hljs-selector-class">.deb</span>
 </code></pre>
 <ul>
 <li>For RPM-based distributions (e.g., Fedora, CentOS):</li>
 </ul>
-<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.rpm-file</span>&gt;
-<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">rpm</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync-v0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8-1</span><span class="hljs-selector-class">.x86_64</span><span class="hljs-selector-class">.rpm</span>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync-VERSION-ARCH.rpm
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">rpm</span> <span class="hljs-selector-tag">-i</span> <span class="hljs-selector-tag">ssh-sync-VERSION-ARCH</span><span class="hljs-selector-class">.rpm</span>
 </code></pre>
 <ul>
 <li>For Alpine Linux:</li>
 </ul>
-<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.apk-file</span>&gt;
-<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">apk</span> <span class="hljs-selector-tag">add</span> <span class="hljs-selector-tag">--allow-untrusted</span> <span class="hljs-selector-tag">ssh-sync_0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8_amd64</span><span class="hljs-selector-class">.apk</span>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync_VERSION_ARCH.apk
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">apk</span> <span class="hljs-selector-tag">add</span> <span class="hljs-selector-tag">--allow-untrusted</span> <span class="hljs-selector-tag">ssh-sync_VERSION_ARCH</span><span class="hljs-selector-class">.apk</span>
 </code></pre>
 <ul>
 <li>For Arch-based distributions (e.g., Arch Linux, Manjaro):</li>
 </ul>
-<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> &lt;<span class="hljs-selector-tag">link-to-</span><span class="hljs-selector-class">.tar.zst-file</span>&gt;
-<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">pacman</span> <span class="hljs-selector-tag">-U</span> <span class="hljs-selector-tag">ssh-sync-0</span><span class="hljs-selector-class">.3</span><span class="hljs-selector-class">.8-1-x86_64</span><span class="hljs-selector-class">.tar.zst</span>
+<pre><code class="lang-shell"><span class="hljs-selector-tag">wget</span> https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync-VERSION-ARCH.tar.zst
+<span class="hljs-selector-tag">sudo</span> <span class="hljs-selector-tag">pacman</span> <span class="hljs-selector-tag">-U</span> <span class="hljs-selector-tag">ssh-sync-VERSION-ARCH</span><span class="hljs-selector-class">.tar.zst</span>
 </code></pre>
 <p>We provide packages for multiple architectures including x86_64 (amd64), ARM64 (aarch64), and ARMv7. Choose the appropriate package for your system architecture.</p>
 <h2 id="getting-started-with-ssh-sync">Getting Started with SSH-Sync</h2>

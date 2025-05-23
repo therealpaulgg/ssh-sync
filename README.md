@@ -30,34 +30,69 @@ brew install ssh-sync
 
 #### Linux
 
-For Linux users, download the appropriate package from our [GitHub Releases](https://github.com/therealpaulgg/ssh-sync/releases) page:
+For Linux users, you can install ssh-sync through our official package repositories or by downloading packages directly from our [GitHub Releases](https://github.com/therealpaulgg/ssh-sync/releases) page:
+
+##### Using the Official Repository
+
+###### Debian/Ubuntu and derivatives:
+
+```shell
+# Add the repository
+echo "deb [trusted=yes] https://repo.sshsync.io/debian $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
+
+# Update package lists
+sudo apt update
+
+# Install ssh-sync
+sudo apt install ssh-sync
+```
+
+###### Fedora/RHEL/CentOS and derivatives:
+
+```shell
+# Add the repository
+cat <<EOF | sudo tee /etc/yum.repos.d/ssh-sync.repo
+[ssh-sync]
+name=SSH-Sync Repository
+baseurl=https://repo.sshsync.io/rpm
+enabled=1
+gpgcheck=0
+EOF
+
+# Install ssh-sync
+sudo dnf install ssh-sync
+```
+
+##### Manual Installation
+
+If you prefer to download and install the package manually:
 
 - For Debian-based distributions (e.g., Ubuntu):
 
 ```shell
-wget <link-to-.deb-file>
-sudo dpkg -i ssh-sync_0.3.8_amd64.deb
+wget https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync_VERSION_ARCH.deb
+sudo dpkg -i ssh-sync_VERSION_ARCH.deb
 ```
 
 - For RPM-based distributions (e.g., Fedora, CentOS):
 
 ```shell
-wget <link-to-.rpm-file>
-sudo rpm -i ssh-sync-v0.3.8-1.x86_64.rpm
+wget https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync-VERSION-ARCH.rpm
+sudo rpm -i ssh-sync-VERSION-ARCH.rpm
 ```
 
 - For Alpine Linux:
 
 ```shell
-wget <link-to-.apk-file>
-sudo apk add --allow-untrusted ssh-sync_0.3.8_amd64.apk
+wget https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync_VERSION_ARCH.apk
+sudo apk add --allow-untrusted ssh-sync_VERSION_ARCH.apk
 ```
 
 - For Arch-based distributions (e.g., Arch Linux, Manjaro):
 
 ```shell
-wget <link-to-.tar.zst-file>
-sudo pacman -U ssh-sync-0.3.8-1-x86_64.tar.zst
+wget https://github.com/therealpaulgg/ssh-sync/releases/latest/download/ssh-sync-VERSION-ARCH.tar.zst
+sudo pacman -U ssh-sync-VERSION-ARCH.tar.zst
 ```
 
 We provide packages for multiple architectures including:
