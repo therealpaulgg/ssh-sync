@@ -70,7 +70,11 @@ To upload your SSH keys and configuration to the server, run:
 ssh-sync upload
 ```
 
-This command securely transmits your SSH keys and configuration to the chosen server, making them accessible from your other machines.
+This command securely transmits your SSH keys, configuration, and known_hosts file to the chosen server, making them accessible from your other machines.
+
+### Known Hosts Synchronization
+
+ssh-sync automatically syncs your `known_hosts` file between machines. This ensures your trusted SSH hosts are consistently available across all your devices, eliminating the need to reconnect and verify host fingerprints on each machine.
 
 ### Downloading Keys
 
@@ -80,7 +84,7 @@ To download your SSH keys to a new or existing machine, ensuring it's set up for
 ssh-sync download
 ```
 
-This command fetches your SSH keys from the server, setting up your SSH environment on the machine.
+This command fetches your SSH keys, configuration, and known_hosts file from the server, setting up your SSH environment on the machine.
 
 #### Conflict Resolution
 

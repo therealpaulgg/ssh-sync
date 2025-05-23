@@ -105,3 +105,49 @@ func WriteKey(key []byte, filename string, sshDirectory string) error {
 
 	return nil
 }
+
+func WriteKnownHosts(knownHostsData []byte, sshDirectory string) error {
+	p, err := GetAndCreateSshDirectory(sshDirectory)
+	if err != nil {
+		return err
+	}
+	knownHostsPath := filepath.Join(p, "known_hosts")
+	_, err = os.OpenFile(knownHostsPath, os.O_RDONLY, 0644)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	} else if err == nil {
+		existingData, err := os.ReadFile(knownHostsPath)
+		if err != nil {
+			return err
+		}
+		if string(existingData) != string(knownHostsData) {
+			var answer string
+			scanner := bufio.NewScanner(os.Stdin)
+			fmt.Printf("diff detected for known_hosts.\n")
+			fmt.Println("1. Overwrite")
+			fmt.Println("2. Skip")
+			fmt.Println("3. Save new file (as .duplicate extension for manual resolution)")
+			fmt.Print("Please choose an option (will skip by default): ")
+
+			if err := ReadLineFromStdin(scanner, &answer); err != nil {
+				return err
+			}
+			fmt.Println()
+			if answer == "3" {
+				knownHostsPath = knownHostsPath + ".duplicate"
+			} else if answer == "2" || answer != "1" {
+				return nil
+			}
+		}
+	}
+	file, err := os.OpenFile(knownHostsPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	if _, err := file.Write(knownHostsData); err != nil {
+		return err
+	}
+
+	return nil
+}
