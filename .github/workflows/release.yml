@@ -108,7 +108,7 @@ jobs:
           fpm -s dir -t pacman -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
           
-      - name: Upload Linux Packages
+      - name: Upload Linux Packages as Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: packages-${{ matrix.arch }}
@@ -117,8 +117,53 @@ jobs:
             *.rpm
             *.apk
             *.tar.zst
+            ./debian/${{ matrix.arch }}/*.deb
+            ./rpm/${{ matrix.arch }}/*.rpm
+            
+      - name: Organize Packages by Type
+        run: |
+          mkdir -p ./debian/${{ matrix.arch }}
+          mkdir -p ./rpm/${{ matrix.arch }}
+          
+          # Move packages to their respective directories
+          mv *.deb ./debian/${{ matrix.arch }}/ || true
+          mv *.rpm ./rpm/${{ matrix.arch }}/ || true
+          
+      - name: Deploy Packages to Repository Server
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm"
+          target: ${{ secrets.REPO_SERVER_PATH }}
+          
+  update-repositories:
+    needs: [build-linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Repository Indexes
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            # Update Debian repository
+            cd ${{ secrets.REPO_SERVER_PATH }}/debian
+            dpkg-scanpackages --multiversion . > Packages
+            gzip -k -f Packages
+            apt-ftparchive release . > Release
+            
+            # Update RPM repository
+            cd ${{ secrets.REPO_SERVER_PATH }}/rpm
+            createrepo_c .
   release:
-    needs: [build-docker, build-windows, build-linux]
+    needs: [build-docker, build-windows, build-linux, update-repositories]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
