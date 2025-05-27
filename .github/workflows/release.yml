@@ -102,11 +102,6 @@ jobs:
                   fpm -s dir -t apk -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
                   ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
 
-            - name: Create an Arch package
-              run: |
-                  fpm -s dir -t pacman -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-                  ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
-
             - name: Organize Packages by Type
               run: |
                   mkdir -p ./debian/${{ matrix.arch }}
