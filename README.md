@@ -30,40 +30,21 @@ brew install ssh-sync
 
 #### Linux
 
-You can install ssh-sync on Linux using our official package repositories with GPG signature verification:
+For Linux users, download the appropriate package from our [GitHub Releases](https://github.com/therealpaulgg/ssh-sync/releases) page:
 
 - For Debian-based distributions (e.g., Ubuntu):
 
 ```shell
-# Import the GPG key
-curl -fsSL https://packages.sshsync.io/public.key | sudo gpg --dearmor -o /usr/share/keyrings/ssh-sync-archive-keyring.gpg
-
-# Add the repository
-echo "deb [signed-by=/usr/share/keyrings/ssh-sync-archive-keyring.gpg] https://packages.sshsync.io/deb/ /" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
-
-# Update and install
-sudo apt update
-sudo apt install ssh-sync
+wget <link-to-.deb-file>
+sudo dpkg -i ssh-sync_0.3.8_amd64.deb
 ```
 
 - For RPM-based distributions (e.g., Fedora, CentOS):
 
 ```shell
-# Add the repository
-cat <<EOF | sudo tee /etc/yum.repos.d/ssh-sync.repo
-[ssh-sync]
-name=SSH Sync Repository
-baseurl=https://packages.sshsync.io/rpm/
-enabled=1
-gpgcheck=1
-gpgkey=https://packages.sshsync.io/public.key
-EOF
-
-# Install ssh-sync
-sudo yum install ssh-sync
+wget <link-to-.rpm-file>
+sudo rpm -i ssh-sync-v0.3.8-1.x86_64.rpm
 ```
-
-Alternatively, you can download individual packages from our [GitHub Releases](https://github.com/therealpaulgg/ssh-sync/releases) page if you prefer direct installation.
 
 ## Getting Started with SSH-Sync
 
@@ -203,41 +184,6 @@ services:
           - POSTGRES_DB=sshsync
         restart: always
 ```
-
-### Package Repository Setup (Optional)
-
-If you want to host your own package repository with GPG signing:
-
-1. Generate a GPG key:
-   ```shell
-   gpg --full-generate-key
-   ```
-
-2. Export your public key:
-   ```shell
-   gpg --export --armor > public.key
-   ```
-
-3. Set up repository directories:
-   ```shell
-   mkdir -p repo/{deb,rpm}
-   ```
-
-4. For Debian packages, you'll need to use `apt-ftparchive` to create and sign the repository:
-   ```shell
-   apt-ftparchive packages repo/deb > repo/deb/Packages
-   gzip -c repo/deb/Packages > repo/deb/Packages.gz
-   apt-ftparchive release repo/deb > repo/deb/Release
-   gpg --batch --yes -o repo/deb/Release.gpg -ba repo/deb/Release
-   ```
-
-5. For RPM packages, use `createrepo_c`:
-   ```shell
-   createrepo_c repo/rpm
-   gpg --batch --yes --detach-sign --armor repo/rpm/repodata/repomd.xml
-   ```
-
-6. Serve the repository using a web server of your choice (Nginx, Apache, etc.)
 
 ### Nginx
 
