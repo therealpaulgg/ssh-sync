@@ -37,8 +37,11 @@ For Linux users, you can install ssh-sync through our official package repositor
 ###### Debian/Ubuntu and derivatives:
 
 ```shell
+# Import the GPG key
+curl -fsSL https://repo.sshsync.io/ssh-sync-repo.asc | sudo gpg --dearmor -o /usr/share/keyrings/ssh-sync-archive-keyring.gpg
+
 # Add the repository
-echo "deb [trusted=yes] https://repo.sshsync.io/debian $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
+echo "deb [signed-by=/usr/share/keyrings/ssh-sync-archive-keyring.gpg] https://repo.sshsync.io/debian $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/ssh-sync.list
 
 # Update package lists
 sudo apt update
@@ -50,13 +53,17 @@ sudo apt install ssh-sync
 ###### Fedora/RHEL/CentOS and derivatives:
 
 ```shell
+# Import the GPG key
+sudo rpm --import https://repo.sshsync.io/ssh-sync-repo.asc
+
 # Add the repository
 cat <<EOF | sudo tee /etc/yum.repos.d/ssh-sync.repo
 [ssh-sync]
 name=SSH-Sync Repository
 baseurl=https://repo.sshsync.io/rpm
 enabled=1
-gpgcheck=0
+gpgcheck=1
+gpgkey=https://repo.sshsync.io/ssh-sync-repo.asc
 EOF
 
 # Install ssh-sync

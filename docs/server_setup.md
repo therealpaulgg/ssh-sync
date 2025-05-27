@@ -8,16 +8,19 @@ This document outlines the steps required to set up a server to host Debian and 
 - Minimum 1GB RAM, 10GB storage
 - Nginx or Apache web server
 - Basic understanding of Linux package repositories
+- GPG key for package signing
 
 ## Required GitHub Secrets
 
-The following secrets need to be added to your GitHub repository settings for the workflow to successfully upload packages:
+The following secrets need to be added to your GitHub repository settings for the workflow to successfully upload and sign packages:
 
 - `REPO_SERVER_HOST`: The hostname or IP address of your package repository server
 - `REPO_SERVER_USER`: The username for SSH access to the server
 - `REPO_SERVER_SSH_KEY`: The private SSH key that allows the GitHub Action to authenticate with your server
 - `REPO_SERVER_PORT`: The SSH port (usually 22)
 - `REPO_SERVER_PATH`: The base path where package repositories will be stored on the server
+- `GPG_KEY_ID`: The GPG key ID used for signing packages and repositories
+- `REPO_SERVER_GPG_PASSPHRASE`: The passphrase for your GPG key
 
 ## Initial Server Setup
 
@@ -47,18 +50,57 @@ sudo chmod -R 755 /var/www/repo
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y dpkg-dev apt-utils
+sudo apt-get install -y dpkg-dev apt-utils gnupg2
 ```
 
 #### For RPM Repository Management:
 
 ```bash
 # On Debian/Ubuntu
-sudo apt-get install -y createrepo-c
+sudo apt-get install -y createrepo-c gnupg2 rpm
 
 # On Fedora/RHEL/CentOS
-sudo dnf install -y createrepo_c
+sudo dnf install -y createrepo_c gnupg2
 ```
+
+### 3. GPG Key Setup
+
+Generate a GPG key for signing packages:
+
+```bash
+# Generate a new GPG key
+gpg --full-generate-key
+```
+
+Follow the prompts to create a GPG key. For repository signing, we recommend:
+- Key type: RSA and RSA
+- Key size: 4096 bits
+- Key validity: 2 years or more
+- Use a strong passphrase
+
+After creating the key, list your keys and note the key ID:
+
+```bash
+gpg --list-secret-keys --keyid-format LONG
+```
+
+You'll see output like:
+```
+sec   rsa4096/3AA5C34371567BD2 2022-03-10 [SC]
+      42B317FD4BA89E7A2BEBB8D73AA5C34371567BD2
+uid                 [ultimate] Your Name <your.email@example.com>
+```
+
+In this example, `3AA5C34371567BD2` is the key ID you'll need to add to GitHub secrets.
+
+Export your public key for distribution:
+
+```bash
+gpg --armor --export 3AA5C34371567BD2 > /var/www/repo/ssh-sync-repo.asc
+chmod 644 /var/www/repo/ssh-sync-repo.asc
+```
+
+Make sure this file is accessible via your web server at `https://repo.sshsync.io/ssh-sync-repo.asc`
 
 ### 3. Web Server Configuration
 
@@ -227,7 +269,23 @@ EOF
 
 ## Securing the Repository
 
-For production repositories, it's recommended to sign packages with GPG keys. This is not covered in this guide but would be a recommended next step for a production setup.
+The GitHub Actions workflow now signs all packages and repository metadata with GPG:
+
+1. RPM packages are individually signed
+2. The RPM repository metadata (repomd.xml) is signed
+3. The Debian repository Release file is signed (creating InRelease and Release.gpg files)
+
+Your users can securely verify the authenticity of packages by importing your GPG public key:
+
+```bash
+# For Debian/Ubuntu users
+curl -fsSL https://repo.sshsync.io/ssh-sync-repo.asc | sudo gpg --dearmor -o /usr/share/keyrings/ssh-sync-archive-keyring.gpg
+
+# For RPM-based distro users
+sudo rpm --import https://repo.sshsync.io/ssh-sync-repo.asc
+```
+
+These commands should be added to your installation documentation.
 
 ## Troubleshooting
 
