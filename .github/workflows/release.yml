@@ -281,4 +281,4 @@ jobs:
             - uses: ncipollo/release-action@v1
               with:
                   artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/*.deb,./packages-amd64/*.rpm,./packages-amd64/*.apk,./packages-amd64/*.tar.zst,./packages-arm64/*.deb,./packages-arm64/*.rpm,./packages-arm64/*.apk,./packages-arm64/*.tar.zst,./packages-arm/*.deb,./packages-arm/*.rpm,./packages-arm/*.apk,./packages-arm/*.tar.zst"
-                  token: ${{ secrets.ACCESS_TOKEN_CLASSIC }
+                  token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
