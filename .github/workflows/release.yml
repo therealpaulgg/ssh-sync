@@ -1,175 +1,284 @@
 name: release
 
-on: 
-  push:
-    tags:
-    - '*'
+on:
+    push:
+        tags:
+            - "*"
 
 jobs:
-  build-docker:
-    runs-on: ubuntu-latest
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v4
-      -
-        name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      -
-        name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ">=1.19.7"
-      -
-        name: Go Build
-        run: go build -o ./win-build/ssh-sync.exe -ldflags "-X main.version=${{github.ref_name}}"
-        shell: powershell
-      -
-        name: Inno Build
-        run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
-        shell: powershell
-      - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-sync-setup
-          path: ./win-build/Output/ssh-sync-setup.exe
-          retention-days: 5
-  build-linux:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [amd64, arm64, arm]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ">=1.19.7"
-      - name: Set GOARCH environment variable
-        run: |
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            echo "GOARCH=amd64" >> $GITHUB_ENV
-          elif [ "${{ matrix.arch }}" = "arm64" ]; then
-            echo "GOARCH=arm64" >> $GITHUB_ENV
-          elif [ "${{ matrix.arch }}" = "arm" ]; then
-            echo "GOARCH=arm" >> $GITHUB_ENV
-            echo "GOARM=7" >> $GITHUB_ENV
-          fi
-      - name: Go Build
-        run: go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{github.ref_name}}"
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-sync-${{ matrix.arch }}
-          path: ./ssh-sync-${{ matrix.arch }}
-          retention-days: 5
-      - name: Install FPM
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
-          sudo gem install --no-document fpm
+    build-docker:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - name: Login to Docker Hub
+              uses: docker/login-action@v3
+              with:
+                  username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v2
+            - name: Build and push
+              uses: docker/build-push-action@v3
+              with:
+                  context: .
+                  file: ./Dockerfile
+                  push: true
+                  tags: ${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest
 
-      - name: Create a .deb package
-        run: |
-          fpm -s dir -t deb -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          --deb-no-default-config-files \
-          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+    build-windows:
+        runs-on: windows-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+            - uses: actions/setup-go@v5
+              with:
+                  go-version: ">=1.19.7"
+            - name: Go Build
+              run: go build -o ./win-build/ssh-sync.exe -ldflags "-X main.version=${{github.ref_name}}"
+              shell: powershell
+            - name: Inno Build
+              run: |
+                  & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
+              shell: powershell
+            - name: "Upload Artifact"
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ssh-sync-setup
+                  path: ./win-build/Output/ssh-sync-setup.exe
+                  retention-days: 5
 
-      - name: Create an .rpm package
-        run: |
-          fpm -s dir -t rpm -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
-          
-      - name: Create an .apk package (Alpine)
-        run: |
-          fpm -s dir -t apk -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
-          
-      - name: Create an Arch package
-        run: |
-          fpm -s dir -t pacman -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
-          
-      - name: Upload Linux Packages as Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: packages-${{ matrix.arch }}
-          path: |
-            *.deb
-            *.rpm
-            *.apk
-            *.tar.zst
-            ./debian/${{ matrix.arch }}/*.deb
-            ./rpm/${{ matrix.arch }}/*.rpm
-            
-      - name: Organize Packages by Type
-        run: |
-          mkdir -p ./debian/${{ matrix.arch }}
-          mkdir -p ./rpm/${{ matrix.arch }}
-          
-          # Move packages to their respective directories
-          mv *.deb ./debian/${{ matrix.arch }}/ || true
-          mv *.rpm ./rpm/${{ matrix.arch }}/ || true
-          
-      - name: Deploy Packages to Repository Server
+    build-linux:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                arch: [amd64, arm64, arm]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-go@v5
+              with:
+                  go-version: ">=1.19.7"
+
+            - name: Set GOARCH environment variable
+              run: |
+                  if [ "${{ matrix.arch }}" = "amd64" ]; then
+                    echo "GOARCH=amd64" >> $GITHUB_ENV
+                  elif [ "${{ matrix.arch }}" = "arm64" ]; then
+                    echo "GOARCH=arm64" >> $GITHUB_ENV
+                  elif [ "${{ matrix.arch }}" = "arm" ]; then
+                    echo "GOARCH=arm" >> $GITHUB_ENV
+                    echo "GOARM=7" >> $GITHUB_ENV
+                  fi
+
+            - name: Go Build
+              run: go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{github.ref_name}}"
+
+            - name: Upload Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ssh-sync-${{ matrix.arch }}
+                  path: ./ssh-sync-${{ matrix.arch }}
+                  retention-days: 5
+
+            - name: Install FPM
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
+                  sudo gem install --no-document fpm
+
+            - name: Create a .deb package
+              run: |
+                  fpm -s dir -t deb -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+                  --deb-no-default-config-files \
+                  ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+
+            - name: Create an .rpm package
+              run: |
+                  fpm -s dir -t rpm -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+                  ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+
+            - name: Create an .apk package (Alpine)
+              run: |
+                  fpm -s dir -t apk -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+                  ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+
+            - name: Create an Arch package
+              run: |
+                  fpm -s dir -t pacman -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+                  ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+
+            - name: Organize Packages by Type
+              run: |
+                  mkdir -p ./debian/${{ matrix.arch }}
+                  mkdir -p ./rpm/${{ matrix.arch }}
+
+                  # Move packages to their respective directories
+                  mv *.deb ./debian/${{ matrix.arch }}/ || true
+                  mv *.rpm ./rpm/${{ matrix.arch }}/ || true
+
+            - name: Upload Linux Packages as Artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: packages-${{ matrix.arch }}
+                  path: |
+                      *.apk
+                      *.tar.zst
+                      ./debian/${{ matrix.arch }}/*.deb
+                      ./rpm/${{ matrix.arch }}/*.rpm
+
+            - name: Deploy Packages to Repository Server
+              if: startsWith(github.ref, 'refs/tags/')
+              uses: appleboy/scp-action@v0.1.4
+              with:
+                  host: ${{ secrets.REPO_SERVER_HOST }}
+                  username: ${{ secrets.REPO_SERVER_USER }}
+                  key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+                  port: ${{ secrets.REPO_SERVER_PORT }}
+                  source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm"
+                  target: ${{ secrets.REPO_SERVER_PATH }}
+
+    sign-and-update-repositories:
+        needs: [build-linux]
         if: startsWith(github.ref, 'refs/tags/')
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.REPO_SERVER_HOST }}
-          username: ${{ secrets.REPO_SERVER_USER }}
-          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
-          port: ${{ secrets.REPO_SERVER_PORT }}
-          source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm"
-          target: ${{ secrets.REPO_SERVER_PATH }}
-          
-  update-repositories:
-    needs: [build-linux]
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update Repository Indexes
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.REPO_SERVER_HOST }}
-          username: ${{ secrets.REPO_SERVER_USER }}
-          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
-          port: ${{ secrets.REPO_SERVER_PORT }}
-          script: |
-            # Update Debian repository
-            cd ${{ secrets.REPO_SERVER_PATH }}/debian
-            dpkg-scanpackages --multiversion . > Packages
-            gzip -k -f Packages
-            apt-ftparchive release . > Release
-            
-            # Update RPM repository
-            cd ${{ secrets.REPO_SERVER_PATH }}/rpm
-            createrepo_c .
-  release:
-    needs: [build-docker, build-windows, build-linux, update-repositories]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download all workflow run artifacts
-        uses: actions/download-artifact@v4
-      - uses: ncipollo/release-action@v1
-        with:
-          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/*.deb,./packages-amd64/*.rpm,./packages-amd64/*.apk,./packages-amd64/*.tar.zst,./packages-arm64/*.deb,./packages-arm64/*.rpm,./packages-arm64/*.apk,./packages-arm64/*.tar.zst,./packages-arm/*.deb,./packages-arm/*.rpm,./packages-arm/*.apk,./packages-arm/*.tar.zst"
-          token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Setup GPG for Repository Signing
+              uses: appleboy/ssh-action@v0.1.10
+              with:
+                  host: ${{ secrets.REPO_SERVER_HOST }}
+                  username: ${{ secrets.REPO_SERVER_USER }}
+                  key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+                  port: ${{ secrets.REPO_SERVER_PORT }}
+                  script: |
+                      # Import GPG key if not already present
+                      if ! gpg --list-secret-keys | grep -q "${{ secrets.REPO_SERVER_GPG_KEY_ID }}"; then
+                        echo "${{ secrets.REPO_SERVER_GPG_KEY }}" | base64 -d | gpg --batch --import
+                      fi
+
+                      # Configure GPG for unattended operation
+                      mkdir -p ~/.gnupg
+                      echo "use-agent" > ~/.gnupg/gpg.conf
+                      echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+                      echo "default-cache-ttl 86400" > ~/.gnupg/gpg-agent.conf
+                      echo "max-cache-ttl 86400" >> ~/.gnupg/gpg-agent.conf
+                      echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
+
+                      # Restart GPG agent
+                      gpgconf --kill gpg-agent || true
+                      gpgconf --launch gpg-agent || true
+
+            - name: Sign RPM Packages and Update Repository
+              uses: appleboy/ssh-action@v0.1.10
+              with:
+                  host: ${{ secrets.REPO_SERVER_HOST }}
+                  username: ${{ secrets.REPO_SERVER_USER }}
+                  key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+                  port: ${{ secrets.REPO_SERVER_PORT }}
+                  script: |
+                      cd ${{ secrets.REPO_SERVER_PATH }}/rpm
+
+                      # Configure RPM signing
+                      cat > ~/.rpmmacros << EOF
+                      %_gpg_name ${{ secrets.GPG_KEY_ID }}
+                      %_gpg_path $HOME/.gnupg
+                      %__gpg_sign_cmd %{__gpg} \
+                          gpg --batch --verbose --no-armor --no-secmem-warning \
+                          --passphrase-fd 3 --pinentry-mode loopback \
+                          -u "%{_gpg_name}" -sbo %{__signature_filename} %{__plaintext_filename}
+                      EOF
+
+                      # Sign all unsigned RPM packages
+                      for rpm in */*.rpm *.rpm; do
+                          if [ -f "$rpm" ]; then
+                              # Check if already signed
+                              if ! rpm -qp --qf '%{SIGPGP:pgpsig}' "$rpm" 2>/dev/null | grep -q "Key ID"; then
+                                  echo "Signing $rpm..."
+                                  echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | rpm --addsign "$rpm" 3<&0
+                              else
+                                  echo "$rpm is already signed"
+                              fi
+                          fi
+                      done
+
+                      # Update repository metadata
+                      createrepo_c --update .
+
+                      # Sign repository metadata
+                      if [ -f "repodata/repomd.xml" ]; then
+                          echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                              --passphrase-fd 0 --armor --detach-sign repodata/repomd.xml
+                      fi
+
+                      echo "RPM repository updated and signed successfully"
+
+            - name: Sign Debian Repository and Update Metadata
+              uses: appleboy/ssh-action@v0.1.10
+              with:
+                  host: ${{ secrets.REPO_SERVER_HOST }}
+                  username: ${{ secrets.REPO_SERVER_USER }}
+                  key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+                  port: ${{ secrets.REPO_SERVER_PORT }}
+                  script: |
+                      cd ${{ secrets.REPO_SERVER_PATH }}/debian
+
+                      # Flatten directory structure for Debian repo (combine all architectures)
+                      find . -name "*.deb" -path "*/amd64/*" -exec mv {} . \;
+                      find . -name "*.deb" -path "*/arm64/*" -exec mv {} . \;
+                      find . -name "*.deb" -path "*/arm/*" -exec mv {} . \;
+
+                      # Remove empty architecture directories
+                      rmdir */amd64 */arm64 */arm 2>/dev/null || true
+
+                      # Generate Packages file
+                      dpkg-scanpackages --multiversion . > Packages
+                      gzip -k -f Packages
+
+                      # Generate Release file
+                      apt-ftparchive release . > Release
+
+                      # Sign the Release file (InRelease)
+                      echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                          --passphrase-fd 0 --local-user "${{ secrets.GPG_KEY_ID }}" --clearsign -o InRelease Release
+
+                      # Create detached signature (Release.gpg)
+                      echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                          --passphrase-fd 0 --local-user "${{ secrets.GPG_KEY_ID }}" --armor --detach-sign -o Release.gpg Release
+
+                      echo "Debian repository updated and signed successfully"
+
+            - name: Export Public Key for Distribution
+              uses: appleboy/ssh-action@v0.1.10
+              with:
+                  host: ${{ secrets.REPO_SERVER_HOST }}
+                  username: ${{ secrets.REPO_SERVER_USER }}
+                  key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+                  port: ${{ secrets.REPO_SERVER_PORT }}
+                  script: |
+                      cd ${{ secrets.REPO_SERVER_PATH }}
+
+                      # Export public key for distribution
+                      gpg --armor --export "${{ secrets.GPG_KEY_ID }}" > pubkey.gpg
+                      gpg --armor --export "${{ secrets.GPG_KEY_ID }}" > ssh-sync-repo.asc
+
+                      # Set proper permissions
+                      chmod 644 pubkey.gpg ssh-sync-repo.asc
+
+                      echo "Public key exported successfully"
+
+    release:
+        needs:
+            [
+                build-docker,
+                build-windows,
+                build-linux,
+                sign-and-update-repositories,
+            ]
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - name: Download all workflow run artifacts
+              uses: actions/download-artifact@v4
+            - uses: ncipollo/release-action@v1
+              with:
+                  artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/*.deb,./packages-amd64/*.rpm,./packages-amd64/*.apk,./packages-amd64/*.tar.zst,./packages-arm64/*.deb,./packages-arm64/*.rpm,./packages-arm64/*.apk,./packages-arm64/*.tar.zst,./packages-arm/*.deb,./packages-arm/*.rpm,./packages-arm/*.apk,./packages-arm/*.tar.zst"
+                  token: ${{ secrets.ACCESS_TOKEN_CLASSIC }
