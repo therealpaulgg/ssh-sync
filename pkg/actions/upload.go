@@ -80,6 +80,29 @@ func Upload(c *cli.Context) error {
 				return errors.New("your ssh config is empty. Please add some hosts to your ssh config so data can be uploaded.")
 			}
 			continue
+		} else if file.Name() == "known_hosts" {
+			f, err := os.OpenFile(filepath.Join(p, file.Name()), os.O_RDONLY, 0600)
+			if err != nil {
+				return err
+			}
+			// read file into buffer
+			knownHostsData, err := io.ReadAll(f)
+			if err != nil {
+				return err
+			}
+			encBytes, err := utils.EncryptWithMasterKey(knownHostsData, masterKey)
+			if err != nil {
+				return err
+			}
+			w, err := multipartWriter.CreateFormField("known_hosts")
+			if err != nil {
+				return err
+			}
+			if _, err := w.Write(encBytes); err != nil {
+				return err
+			}
+			f.Close()
+			continue
 		}
 		f, err := os.OpenFile(filepath.Join(p, file.Name()), os.O_RDONLY, 0600)
 		if err != nil {
