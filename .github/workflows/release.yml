@@ -1,67 +1,68 @@
 name: release
-on:
+
+on: 
   push:
     tags:
-      - '*'
+    - '*'
+
 jobs:
   build-docker:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      -
+        name: Checkout
         uses: actions/checkout@v4
-      - name: Login to Docker Hub
+      -
+        name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: '${{ secrets.DOCKERHUB_USERNAME }}'
-          password: '${{ secrets.DOCKERHUB_TOKEN }}'
-      - name: Set up Docker Buildx
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Build and push
+      -
+        name: Build and push
         uses: docker/build-push-action@v3
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: '${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest'
-  
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Checkout
+      -
+        name: Checkout
         uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '>=1.19.7'
-      - name: Go Build
-        run: >-
-          go build -o ./win-build/ssh-sync.exe -ldflags "-X
-          main.version=${{github.ref_name}}"
+          go-version: ">=1.19.7"
+      -
+        name: Go Build
+        run: go build -o ./win-build/ssh-sync.exe -ldflags "-X main.version=${{github.ref_name}}"
         shell: powershell
-      - name: Inno Build
-        run: >
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe"
-          /dMyAppVersion="${{github.ref_name}}"
-          "$env:GITHUB_WORKSPACE\win-build\setup.iss"
+      -
+        name: Inno Build
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
         shell: powershell
-      - name: Upload Artifact
+      - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
           name: ssh-sync-setup
           path: ./win-build/Output/ssh-sync-setup.exe
           retention-days: 5
-  
   build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '>=1.19.7'
+          go-version: ">=1.19.7"
       - name: Go Build
-        run: >-
-          go build -o ssh-sync -ldflags "-X
-          main.version=${{github.ref_name}}"
-      - name: Upload Binary Artifact
+        run: go build -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ssh-sync
@@ -72,14 +73,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
           sudo gem install --no-document fpm
+
       - name: Create a .deb package
-        run: >
-          fpm -s dir -t deb -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync"
-          --deb-no-default-config-files
+        run: |
+          fpm -s dir -t deb -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --deb-no-default-config-files \
           ./ssh-sync=/usr/local/bin/ssh-sync
+
       - name: Create an .rpm package
-        run: >
-          fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync"
+        run: |
+          fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync=/usr/local/bin/ssh-sync
       - name: Upload Linux Packages
         uses: actions/upload-artifact@v4
@@ -88,8 +91,6 @@ jobs:
           path: |
             *.deb
             *.rpm
-          retention-days: 5
-  
   release:
     needs: [build-docker, build-windows, build-linux]
     runs-on: ubuntu-latest
@@ -100,4 +101,4 @@ jobs:
       - uses: ncipollo/release-action@v1
         with:
           artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
-          token: '${{ secrets.ACCESS_TOKEN_CLASSIC }}'
+          token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
