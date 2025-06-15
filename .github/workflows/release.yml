@@ -29,6 +29,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/ssh-sync:latest
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -53,6 +54,7 @@ jobs:
           name: ssh-sync-setup
           path: ./win-build/Output/ssh-sync-setup.exe
           retention-days: 5
+
   build-linux:
     runs-on: ubuntu-latest
     steps:
@@ -90,14 +92,23 @@ jobs:
           fpm -s dir -t apk -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync=/usr/local/bin/ssh-sync
 
+      - name: Organize Packages by Type
+        run: |
+          mkdir -p ./debian
+          mkdir -p ./rpm
+
+          # Move packages to their respective directories
+          mv *.deb ./debian/ || true
+          mv *.rpm ./rpm/ || true
+
       - name: Upload Linux Packages
         uses: actions/upload-artifact@v4
         with:
           name: packages
           path: |
-            *.deb
-            *.rpm
             *.apk
+            ./debian/*.deb
+            ./rpm/*.rpm
 
       - name: Deploy Packages to Repository Server
         if: startsWith(github.ref, 'refs/tags/')
@@ -107,7 +118,7 @@ jobs:
           username: ${{ secrets.REPO_SERVER_USER }}
           key: ${{ secrets.REPO_SERVER_SSH_KEY }}
           port: ${{ secrets.REPO_SERVER_PORT }}
-          source: "*.deb,*.rpm"
+          source: "./debian/*.deb,./rpm/*.rpm"
           target: ${{ secrets.REPO_SERVER_PATH }}
 
   sign-and-update-repositories:
@@ -173,8 +184,8 @@ jobs:
                 fi
             done
 
-            # Update repository metadata
-            createrepo_c --update .
+            # Create/update repository metadata
+            createrepo_c .
 
             # Sign repository metadata
             if [ -f "repodata/repomd.xml" ]; then
