@@ -189,7 +189,27 @@ jobs:
                 -u "%{_gpg_name}" -sbo %{__signature_filename} %{__plaintext_filename}
             EOF
 
-            # Sign all unsigned RPM packages
+            # Sign all unsigned RPM packages in architecture subdirectories
+            for arch_dir in */; do
+                if [ -d "$arch_dir" ]; then
+                    echo "Processing architecture directory: $arch_dir"
+                    cd "$arch_dir"
+                    for rpm in *.rpm; do
+                        if [ -f "$rpm" ]; then
+                            # Check if already signed
+                            if ! rpm -qp --qf '%{SIGPGP:pgpsig}' "$rpm" 2>/dev/null | grep -q "Key ID"; then
+                                echo "Signing $rpm..."
+                                echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | rpm --addsign "$rpm" 3<&0
+                            else
+                                echo "$rpm is already signed"
+                            fi
+                        fi
+                    done
+                    cd ..
+                fi
+            done
+
+            # Also sign any RPMs in the root directory (fallback)
             for rpm in *.rpm; do
                 if [ -f "$rpm" ]; then
                     # Check if already signed
