@@ -118,7 +118,7 @@ jobs:
           mv *.deb ./debian/${{ matrix.arch }}/ || true
           mv *.rpm ./rpm/${{ matrix.arch }}/ || true
 
-      - name: Upload Linux Packages
+      - name: Upload Linux Packages as Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: packages-${{ matrix.arch }}
@@ -135,7 +135,7 @@ jobs:
           username: ${{ secrets.REPO_SERVER_USER }}
           key: ${{ secrets.REPO_SERVER_SSH_KEY }}
           port: ${{ secrets.REPO_SERVER_PORT }}
-          source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm"
+          source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm,*.apk"
           target: ${{ secrets.REPO_SERVER_PATH }}
           overwrite: true
 
@@ -267,6 +267,45 @@ jobs:
                 --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" --armor --detach-sign -o Release.gpg Release
 
             echo "Debian repository updated and signed successfully"
+
+      - name: Setup Alpine Repository
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            cd ${{ secrets.REPO_SERVER_PATH }}
+
+            # Create alpine directory structure
+            mkdir -p alpine/x86_64
+            mkdir -p alpine/aarch64
+            mkdir -p alpine/armhf
+
+            # Move .apk packages to appropriate architecture directories
+            find . -maxdepth 1 -name "*amd64*.apk" -exec mv {} alpine/x86_64/ \; 2>/dev/null || true
+            find . -maxdepth 1 -name "*arm64*.apk" -exec mv {} alpine/aarch64/ \; 2>/dev/null || true  
+            find . -maxdepth 1 -name "*arm*.apk" -exec mv {} alpine/armhf/ \; 2>/dev/null || true
+
+            # Generate APKINDEX for each architecture
+            for arch in x86_64 aarch64 armhf; do
+                if [ -d "alpine/$arch" ] && [ "$(ls -A alpine/$arch/*.apk 2>/dev/null)" ]; then
+                    cd alpine/$arch
+                    
+                    # Create APKINDEX
+                    apk index -o APKINDEX.tar.gz *.apk
+                    
+                    # Sign the APKINDEX
+                    echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                        --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" \
+                        --armor --detach-sign APKINDEX.tar.gz
+                    
+                    cd ../..
+                fi
+            done
+
+            echo "Alpine repository setup completed"
 
       - name: Export Public Key for Distribution
         uses: appleboy/ssh-action@v0.1.10
