@@ -120,6 +120,7 @@ jobs:
           port: ${{ secrets.REPO_SERVER_PORT }}
           source: "./debian/*.deb,./rpm/*.rpm"
           target: ${{ secrets.REPO_SERVER_PATH }}
+          overwrite: true
 
   sign-and-update-repositories:
     needs: [build-linux]
