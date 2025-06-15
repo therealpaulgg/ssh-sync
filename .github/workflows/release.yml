@@ -84,6 +84,12 @@ jobs:
         run: |
           fpm -s dir -t rpm -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync=/usr/local/bin/ssh-sync
+
+      - name: Create an .apk package (Alpine)
+        run: |
+          fpm -s dir -t apk -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          ./ssh-sync=/usr/local/bin/ssh-sync
+
       - name: Upload Linux Packages
         uses: actions/upload-artifact@v4
         with:
@@ -91,8 +97,141 @@ jobs:
           path: |
             *.deb
             *.rpm
+            *.apk
+
+      - name: Deploy Packages to Repository Server
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          source: "*.deb,*.rpm"
+          target: ${{ secrets.REPO_SERVER_PATH }}
+
+  sign-and-update-repositories:
+    needs: [build-linux]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup GPG for Repository Signing
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            # Import GPG key if not already present
+            if ! gpg --list-secret-keys | grep -q "${{ secrets.REPO_SERVER_GPG_KEY_ID }}"; then
+              echo "${{ secrets.REPO_SERVER_GPG_KEY }}" | base64 -d | gpg --batch --import
+            fi
+
+            # Configure GPG for unattended operation
+            mkdir -p ~/.gnupg
+            echo "use-agent" > ~/.gnupg/gpg.conf
+            echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+            echo "default-cache-ttl 86400" > ~/.gnupg/gpg-agent.conf
+            echo "max-cache-ttl 86400" >> ~/.gnupg/gpg-agent.conf
+            echo "allow-preset-passphrase" >> ~/.gnupg/gpg-agent.conf
+
+            # Restart GPG agent
+            gpgconf --kill gpg-agent || true
+            gpgconf --launch gpg-agent || true
+
+      - name: Sign RPM Packages and Update Repository
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            cd ${{ secrets.REPO_SERVER_PATH }}/rpm
+
+            # Configure RPM signing
+            cat > ~/.rpmmacros << EOF
+            %_gpg_name ${{ secrets.REPO_SERVER_GPG_KEY_ID }}
+            %_gpg_path $HOME/.gnupg
+            %__gpg_sign_cmd %{__gpg} \
+                gpg --batch --verbose --no-armor --no-secmem-warning \
+                --passphrase-fd 3 --pinentry-mode loopback \
+                -u "%{_gpg_name}" -sbo %{__signature_filename} %{__plaintext_filename}
+            EOF
+
+            # Sign all unsigned RPM packages
+            for rpm in *.rpm; do
+                if [ -f "$rpm" ]; then
+                    # Check if already signed
+                    if ! rpm -qp --qf '%{SIGPGP:pgpsig}' "$rpm" 2>/dev/null | grep -q "Key ID"; then
+                        echo "Signing $rpm..."
+                        echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | rpm --addsign "$rpm" 3<&0
+                    else
+                        echo "$rpm is already signed"
+                    fi
+                fi
+            done
+
+            # Update repository metadata
+            createrepo_c --update .
+
+            # Sign repository metadata
+            if [ -f "repodata/repomd.xml" ]; then
+                echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                    --passphrase-fd 0 --armor --detach-sign repodata/repomd.xml
+            fi
+
+            echo "RPM repository updated and signed successfully"
+
+      - name: Sign Debian Repository and Update Metadata
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            cd ${{ secrets.REPO_SERVER_PATH }}/debian
+
+            # Generate Packages file
+            dpkg-scanpackages --multiversion . > Packages
+            gzip -k -f Packages
+
+            # Generate Release file
+            apt-ftparchive release . > Release
+
+            # Sign the Release file (InRelease)
+            echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" --clearsign -o InRelease Release
+
+            # Create detached signature (Release.gpg)
+            echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" --armor --detach-sign -o Release.gpg Release
+
+            echo "Debian repository updated and signed successfully"
+
+      - name: Export Public Key for Distribution
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            cd ${{ secrets.REPO_SERVER_PATH }}
+
+            # Export public key for distribution
+            gpg --armor --export "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" > pubkey.gpg
+            gpg --armor --export "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" > ssh-sync-repo.asc
+
+            # Set proper permissions
+            chmod 644 pubkey.gpg ssh-sync-repo.asc
+
+            echo "Public key exported successfully"
+
   release:
-    needs: [build-docker, build-windows, build-linux]
+    needs: [build-docker, build-windows, build-linux, sign-and-update-repositories]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,5 +239,5 @@ jobs:
         uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm"
+          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync/ssh-sync,./packages/*.deb,./packages/*.rpm,./packages/*.apk"
           token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
