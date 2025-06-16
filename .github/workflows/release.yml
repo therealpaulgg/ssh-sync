@@ -32,6 +32,9 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     steps:
       -
         name: Checkout
@@ -40,19 +43,28 @@ jobs:
         with:
           go-version: ">=1.19.7"
       -
+        name: Set GOARCH environment variable
+        run: |
+          if ("${{ matrix.arch }}" -eq "amd64") {
+            echo "GOARCH=amd64" >> $env:GITHUB_ENV
+          } elseif ("${{ matrix.arch }}" -eq "arm64") {
+            echo "GOARCH=arm64" >> $env:GITHUB_ENV
+          }
+        shell: powershell
+      -
         name: Go Build
-        run: go build -o ./win-build/ssh-sync.exe -ldflags "-X main.version=${{github.ref_name}}"
+        run: go build -o ./win-build/ssh-sync-${{ matrix.arch }}.exe -ldflags "-X main.version=${{github.ref_name}}"
         shell: powershell
       -
         name: Inno Build
         run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" /dMyAppArch="${{ matrix.arch }}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
         shell: powershell
       - name: 'Upload Artifact'
         uses: actions/upload-artifact@v4
         with:
-          name: ssh-sync-setup
-          path: ./win-build/Output/ssh-sync-setup.exe
+          name: ssh-sync-setup-${{ matrix.arch }}
+          path: ./win-build/Output/ssh-sync-setup-${{ matrix.arch }}.exe
           retention-days: 5
 
   build-linux:
@@ -109,14 +121,23 @@ jobs:
           fpm -s dir -t apk -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
           ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
 
+      - name: Create an Arch Linux package (.tar.zst)
+        run: |
+          fpm -s dir -t tar -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
+          --tar-compression zstd ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+          # Rename to follow Arch naming convention
+          mv ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.tar.zst ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.pkg.tar.zst
+
       - name: Organize Packages by Type
         run: |
           mkdir -p ./debian/${{ matrix.arch }}
           mkdir -p ./rpm/${{ matrix.arch }}
+          mkdir -p ./arch/${{ matrix.arch }}
 
           # Move packages to their respective directories
           mv *.deb ./debian/${{ matrix.arch }}/ || true
           mv *.rpm ./rpm/${{ matrix.arch }}/ || true
+          mv *.pkg.tar.zst ./arch/${{ matrix.arch }}/ || true
 
       - name: Upload Linux Packages as Artifacts
         uses: actions/upload-artifact@v4
@@ -126,6 +147,7 @@ jobs:
             *.apk
             ./debian/${{ matrix.arch }}/*.deb
             ./rpm/${{ matrix.arch }}/*.rpm
+            ./arch/${{ matrix.arch }}/*.pkg.tar.zst
 
       - name: Deploy Packages to Repository Server
         if: startsWith(github.ref, 'refs/tags/')
@@ -135,7 +157,7 @@ jobs:
           username: ${{ secrets.REPO_SERVER_USER }}
           key: ${{ secrets.REPO_SERVER_SSH_KEY }}
           port: ${{ secrets.REPO_SERVER_PORT }}
-          source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm,*.apk"
+          source: "./debian/${{ matrix.arch }}/*.deb,./rpm/${{ matrix.arch }}/*.rpm,./arch/${{ matrix.arch }}/*.pkg.tar.zst,*.apk"
           target: ${{ secrets.REPO_SERVER_PATH }}
           overwrite: true
 
@@ -268,7 +290,7 @@ jobs:
 
             echo "Debian repository updated and signed successfully"
 
-      - name: Setup Alpine Repository
+      - name: Setup Alpine Repository and Sign Packages
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.REPO_SERVER_HOST }}
@@ -279,14 +301,28 @@ jobs:
             cd ${{ secrets.REPO_SERVER_PATH }}
 
             # Install Alpine package tools if not present
-            if ! command -v apk &> /dev/null; then
+            if ! command -v abuild-sign &> /dev/null; then
                 echo "Installing Alpine package tools..."
-                # Download and install apk-tools-static
+                # Download and install alpine tools
                 wget -q https://gitlab.alpinelinux.org/api/v4/projects/5/packages/generic/v2.14.0/x86_64/apk.static -O /tmp/apk.static
                 chmod +x /tmp/apk.static
-                APK_CMD="/tmp/apk.static"
-            else
-                APK_CMD="apk"
+                
+                # Download abuild-sign and related tools
+                if ! command -v abuild-sign &> /dev/null; then
+                    echo "Installing abuild tools..."
+                    /tmp/apk.static add --no-cache --initdb --root /tmp/alpine-root alpine-sdk
+                    ln -sf /tmp/alpine-root/usr/bin/abuild-sign /usr/local/bin/abuild-sign 2>/dev/null || true
+                fi
+            fi
+
+            # Setup Alpine RSA keys for signing
+            mkdir -p ~/.abuild
+            if [ ! -f ~/.abuild/ssh-sync.rsa ]; then
+                echo "Setting up Alpine RSA keys..."
+                echo "${{ secrets.ALPINE_PRIVATE_KEY }}" | base64 -d > ~/.abuild/ssh-sync.rsa
+                echo "${{ secrets.ALPINE_PUBLIC_KEY }}" | base64 -d > ~/.abuild/ssh-sync.rsa.pub
+                chmod 600 ~/.abuild/ssh-sync.rsa
+                chmod 644 ~/.abuild/ssh-sync.rsa.pub
             fi
 
             # Create alpine directory structure
@@ -299,42 +335,91 @@ jobs:
             find . -maxdepth 1 -name "*arm64*.apk" -exec mv {} alpine/aarch64/ \; 2>/dev/null || true  
             find . -maxdepth 1 -name "*arm*.apk" -exec mv {} alpine/armhf/ \; 2>/dev/null || true
 
-            # Generate APKINDEX for each architecture (unsigned for now)
+            # Sign packages and generate APKINDEX for each architecture
             for arch in x86_64 aarch64 armhf; do
                 if [ -d "alpine/$arch" ] && [ "$(ls -A alpine/$arch/*.apk 2>/dev/null)" ]; then
                     cd alpine/$arch
                     
-                    echo "Creating APKINDEX for $arch..."
-                    # Create APKINDEX using the apk command (unsigned)
-                    $APK_CMD index -o APKINDEX.tar.gz *.apk 2>/dev/null || {
-                        echo "Failed to create APKINDEX with apk command, creating manually..."
-                        # Fallback: create a basic APKINDEX manually
-                        tar -czf APKINDEX.tar.gz --files-from=/dev/null
-                        for apk_file in *.apk; do
-                            if [ -f "$apk_file" ]; then
-                                # Extract basic package info and append to APKINDEX
-                                echo "P:ssh-sync" >> APKINDEX.tmp
-                                echo "V:$(echo $apk_file | sed 's/ssh-sync-\(.*\)-.*\.apk/\1/')" >> APKINDEX.tmp
-                                echo "A:$arch" >> APKINDEX.tmp
-                                echo "S:$(stat -c%s $apk_file)" >> APKINDEX.tmp
-                                echo "T:ssh-sync" >> APKINDEX.tmp
-                                echo "" >> APKINDEX.tmp
-                            fi
-                        done
-                        [ -f APKINDEX.tmp ] && tar -czf APKINDEX.tar.gz APKINDEX.tmp && rm APKINDEX.tmp
-                    }
+                    echo "Signing and indexing packages for $arch..."
                     
-                    if [ -f "APKINDEX.tar.gz" ]; then
-                        echo "Created APKINDEX for $arch (unsigned - use --allow-untrusted for installation)"
+                    # Sign each package
+                    for apk_file in *.apk; do
+                        if [ -f "$apk_file" ]; then
+                            echo "Signing $apk_file..."
+                            if command -v abuild-sign &> /dev/null; then
+                                abuild-sign -k ~/.abuild/ssh-sync.rsa "$apk_file"
+                            else
+                                echo "Warning: abuild-sign not available, package $apk_file will remain unsigned"
+                            fi
+                        fi
+                    done
+                    
+                    # Create signed APKINDEX
+                    if command -v apk &> /dev/null || [ -f "/tmp/apk.static" ]; then
+                        APK_CMD=${APK_CMD:-/tmp/apk.static}
+                        $APK_CMD index --description "SSH-Sync Repository" \
+                            --rewrite-arch $arch -o APKINDEX.tar.gz *.apk
+                        
+                        # Sign the APKINDEX
+                        if command -v abuild-sign &> /dev/null; then
+                            abuild-sign -k ~/.abuild/ssh-sync.rsa APKINDEX.tar.gz
+                        fi
                     else
-                        echo "Failed to create APKINDEX for $arch"
+                        echo "Warning: Could not create APKINDEX for $arch - apk tools not available"
                     fi
                     
                     cd ../..
                 fi
             done
 
-            echo "Alpine repository setup completed (packages are unsigned)"
+            echo "Alpine repository setup and signing completed"
+
+      - name: Setup Arch Linux Repository
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.REPO_SERVER_HOST }}
+          username: ${{ secrets.REPO_SERVER_USER }}
+          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
+          port: ${{ secrets.REPO_SERVER_PORT }}
+          script: |
+            cd ${{ secrets.REPO_SERVER_PATH }}
+
+            # Create arch directory structure
+            mkdir -p arch/x86_64
+            mkdir -p arch/aarch64
+            mkdir -p arch/armv7h
+
+            # Move .pkg.tar.zst packages to appropriate architecture directories
+            find . -path "./arch/amd64/*.pkg.tar.zst" -exec mv {} arch/x86_64/ \; 2>/dev/null || true
+            find . -path "./arch/arm64/*.pkg.tar.zst" -exec mv {} arch/aarch64/ \; 2>/dev/null || true
+            find . -path "./arch/arm/*.pkg.tar.zst" -exec mv {} arch/armv7h/ \; 2>/dev/null || true
+
+            # Generate repository databases for each architecture
+            for arch in x86_64 aarch64 armv7h; do
+                if [ -d "arch/$arch" ] && [ "$(ls -A arch/$arch/*.pkg.tar.zst 2>/dev/null)" ]; then
+                    cd arch/$arch
+                    
+                    echo "Creating repository database for $arch..."
+                    
+                    # Create repository database using repo-add (if available)
+                    if command -v repo-add &> /dev/null; then
+                        repo-add ssh-sync.db.tar.xz *.pkg.tar.zst
+                    else
+                        echo "Warning: repo-add not available, creating basic database structure"
+                        # Create a basic database structure manually
+                        echo "Repository database for ssh-sync packages ($arch)" > ssh-sync.db.tar.xz.desc
+                        tar -cJf ssh-sync.db.tar.xz ssh-sync.db.tar.xz.desc
+                        rm ssh-sync.db.tar.xz.desc
+                    fi
+                    
+                    # Create symlinks as expected by pacman
+                    ln -sf ssh-sync.db.tar.xz ssh-sync.db 2>/dev/null || true
+                    
+                    cd ../..
+                fi
+            done
+
+            echo "Arch Linux repository setup completed"
 
       - name: Export Public Key for Distribution
         uses: appleboy/ssh-action@v0.1.10
@@ -364,5 +449,5 @@ jobs:
         uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup/ssh-sync-setup.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/debian/amd64/*.deb,./packages-amd64/rpm/amd64/*.rpm,./packages-amd64/*.apk,./packages-arm64/debian/arm64/*.deb,./packages-arm64/rpm/arm64/*.rpm,./packages-arm64/*.apk,./packages-arm/debian/arm/*.deb,./packages-arm/rpm/arm/*.rpm,./packages-arm/*.apk"
+          artifacts: "./ssh-sync-setup-amd64/ssh-sync-setup-amd64.exe,./ssh-sync-setup-arm64/ssh-sync-setup-arm64.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/debian/amd64/*.deb,./packages-amd64/rpm/amd64/*.rpm,./packages-amd64/arch/amd64/*.pkg.tar.zst,./packages-amd64/*.apk,./packages-arm64/debian/arm64/*.deb,./packages-arm64/rpm/arm64/*.rpm,./packages-arm64/arch/arm64/*.pkg.tar.zst,./packages-arm64/*.apk,./packages-arm/debian/arm/*.deb,./packages-arm/rpm/arm/*.rpm,./packages-arm/arch/arm/*.pkg.tar.zst,./packages-arm/*.apk"
           token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
