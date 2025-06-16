@@ -102,7 +102,7 @@ jobs:
       - name: Install FPM
         run: |
           sudo apt-get update
-          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm
+          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm zstd
           sudo gem install --no-document fpm
 
       - name: Create a .deb package
@@ -124,9 +124,11 @@ jobs:
       - name: Create an Arch Linux package (.tar.zst)
         run: |
           fpm -s dir -t tar -a ${{ matrix.arch }} -n ssh-sync -v ${{ github.ref_name }} --description "ssh-sync" \
-          --tar-compression zstd ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
-          # Rename to follow Arch naming convention
-          mv ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.tar.zst ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.pkg.tar.zst
+          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+          # Compress with zstd and rename to follow Arch naming convention
+          mv ssh-sync.tar ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.tar
+          zstd ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.tar -o ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.pkg.tar.zst
+          rm ssh-sync-${{ github.ref_name }}-${{ matrix.arch }}.tar
 
       - name: Organize Packages by Type
         run: |
