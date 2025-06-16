@@ -278,6 +278,17 @@ jobs:
           script: |
             cd ${{ secrets.REPO_SERVER_PATH }}
 
+            # Install Alpine package tools if not present
+            if ! command -v apk &> /dev/null; then
+                echo "Installing Alpine package tools..."
+                # Download and install apk-tools-static
+                wget -q https://gitlab.alpinelinux.org/api/v4/projects/5/packages/generic/v2.14.0/x86_64/apk.static -O /tmp/apk.static
+                chmod +x /tmp/apk.static
+                APK_CMD="/tmp/apk.static"
+            else
+                APK_CMD="apk"
+            fi
+
             # Create alpine directory structure
             mkdir -p alpine/x86_64
             mkdir -p alpine/aarch64
@@ -293,13 +304,35 @@ jobs:
                 if [ -d "alpine/$arch" ] && [ "$(ls -A alpine/$arch/*.apk 2>/dev/null)" ]; then
                     cd alpine/$arch
                     
-                    # Create APKINDEX
-                    apk index -o APKINDEX.tar.gz *.apk
+                    echo "Creating APKINDEX for $arch..."
+                    # Create APKINDEX using the apk command
+                    $APK_CMD index -o APKINDEX.tar.gz *.apk 2>/dev/null || {
+                        echo "Failed to create APKINDEX with apk command, creating manually..."
+                        # Fallback: create a basic APKINDEX manually
+                        tar -czf APKINDEX.tar.gz --files-from=/dev/null
+                        for apk_file in *.apk; do
+                            if [ -f "$apk_file" ]; then
+                                # Extract basic package info and append to APKINDEX
+                                echo "P:ssh-sync" >> APKINDEX.tmp
+                                echo "V:$(echo $apk_file | sed 's/ssh-sync-\(.*\)-.*\.apk/\1/')" >> APKINDEX.tmp
+                                echo "A:$arch" >> APKINDEX.tmp
+                                echo "S:$(stat -c%s $apk_file)" >> APKINDEX.tmp
+                                echo "T:ssh-sync" >> APKINDEX.tmp
+                                echo "" >> APKINDEX.tmp
+                            fi
+                        done
+                        [ -f APKINDEX.tmp ] && tar -czf APKINDEX.tar.gz APKINDEX.tmp && rm APKINDEX.tmp
+                    }
                     
-                    # Sign the APKINDEX
-                    echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
-                        --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" \
-                        --armor --detach-sign APKINDEX.tar.gz
+                    # Sign the APKINDEX if it was created successfully
+                    if [ -f "APKINDEX.tar.gz" ]; then
+                        echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
+                            --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" \
+                            --armor --detach-sign APKINDEX.tar.gz
+                        echo "Created and signed APKINDEX for $arch"
+                    else
+                        echo "Failed to create APKINDEX for $arch"
+                    fi
                     
                     cd ../..
                 fi

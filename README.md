@@ -69,6 +69,22 @@ EOF
 sudo dnf install ssh-sync
 ```
 
+###### Alpine Linux:
+
+```shell
+# Import the GPG key
+curl -fsSL https://repo.sshsync.io/ssh-sync-repo.asc | sudo tee /etc/apk/keys/ssh-sync-repo.asc
+
+# Add the repository
+echo "https://repo.sshsync.io/alpine" | sudo tee -a /etc/apk/repositories
+
+# Update package lists
+sudo apk update
+
+# Install ssh-sync
+sudo apk add ssh-sync
+```
+
 ##### Manual Installation
 
 If you prefer to download and install the package manually:
@@ -103,10 +119,10 @@ sudo pacman -U ssh-sync-VERSION-ARCH.tar.zst
 
 We provide packages for multiple architectures including:
 - x86_64 (amd64)
-- ARM64 (aarch64)
-- ARMv7
+- ARM64 (aarch64/arm64)
+- ARMv7 (arm)
 
-Choose the appropriate package for your system architecture.
+Choose the appropriate package for your system architecture by replacing `amd64` with `arm64` or `arm` in the download URLs above.
 
 ## Getting Started with SSH-Sync
 
@@ -309,4 +325,3 @@ ssh-sync is an open-source project, and contributions are welcome! If you're int
 ## License
 
 ssh-sync is released under the [MIT License](https://github.com/therealpaulgg/ssh-sync/blob/main/LICENSE.txt).
-
