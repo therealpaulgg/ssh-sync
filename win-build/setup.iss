@@ -4,7 +4,16 @@
 #define MyAppName "ssh-sync"
 #define MyAppPublisher "therealpaulgg"
 #define MyAppURL "https://github.com/therealpaulgg/ssh-sync"
-#define MyAppExeName "ssh-sync.exe"
+#ifndef MyAppArch
+  #define MyAppArch "amd64"
+#endif
+#if MyAppArch == "amd64"
+  #define MyAppExeName "ssh-sync-amd64.exe"
+  #define MyArchitecture ""
+#elif MyAppArch == "arm64"
+  #define MyAppExeName "ssh-sync-arm64.exe"
+  #define MyArchitecture "arm64"
+#endif
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -24,7 +33,11 @@ DisableProgramGroupPage=yes
 LicenseFile=.\LICENSE.txt
 ; Remove the following line to run in administrative install mode (install for all users.)
 PrivilegesRequired=lowest
-OutputBaseFilename=ssh-sync-setup
+OutputBaseFilename=ssh-sync-setup-{#MyAppArch}
+#if MyAppArch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#endif
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
