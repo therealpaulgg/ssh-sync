@@ -299,13 +299,13 @@ jobs:
             find . -maxdepth 1 -name "*arm64*.apk" -exec mv {} alpine/aarch64/ \; 2>/dev/null || true  
             find . -maxdepth 1 -name "*arm*.apk" -exec mv {} alpine/armhf/ \; 2>/dev/null || true
 
-            # Generate APKINDEX for each architecture
+            # Generate APKINDEX for each architecture (unsigned for now)
             for arch in x86_64 aarch64 armhf; do
                 if [ -d "alpine/$arch" ] && [ "$(ls -A alpine/$arch/*.apk 2>/dev/null)" ]; then
                     cd alpine/$arch
                     
                     echo "Creating APKINDEX for $arch..."
-                    # Create APKINDEX using the apk command
+                    # Create APKINDEX using the apk command (unsigned)
                     $APK_CMD index -o APKINDEX.tar.gz *.apk 2>/dev/null || {
                         echo "Failed to create APKINDEX with apk command, creating manually..."
                         # Fallback: create a basic APKINDEX manually
@@ -324,12 +324,8 @@ jobs:
                         [ -f APKINDEX.tmp ] && tar -czf APKINDEX.tar.gz APKINDEX.tmp && rm APKINDEX.tmp
                     }
                     
-                    # Sign the APKINDEX if it was created successfully
                     if [ -f "APKINDEX.tar.gz" ]; then
-                        echo "${{ secrets.REPO_SERVER_GPG_PASSPHRASE }}" | gpg --batch --yes --pinentry-mode loopback \
-                            --passphrase-fd 0 --local-user "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" \
-                            --armor --detach-sign APKINDEX.tar.gz
-                        echo "Created and signed APKINDEX for $arch"
+                        echo "Created APKINDEX for $arch (unsigned - use --allow-untrusted for installation)"
                     else
                         echo "Failed to create APKINDEX for $arch"
                     fi
@@ -338,7 +334,7 @@ jobs:
                 fi
             done
 
-            echo "Alpine repository setup completed"
+            echo "Alpine repository setup completed (packages are unsigned)"
 
       - name: Export Public Key for Distribution
         uses: appleboy/ssh-action@v0.1.10
