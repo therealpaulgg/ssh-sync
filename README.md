@@ -69,20 +69,17 @@ EOF
 sudo dnf install ssh-sync
 ```
 
-###### Alpine Linux:
+###### Alpine Linux (unsigned for now):
 
 ```shell
-# Import the GPG key
-curl -fsSL https://repo.sshsync.io/ssh-sync-repo.asc | sudo tee /etc/apk/keys/ssh-sync-repo.asc
-
 # Add the repository
-echo "https://repo.sshsync.io/alpine" | sudo tee -a /etc/apk/repositories
+echo "https://repo.sshsync.io/alpine/$(uname -m)" | sudo tee -a /etc/apk/repositories
 
 # Update package lists
 sudo apk update
 
-# Install ssh-sync
-sudo apk add ssh-sync
+# Install ssh-sync (using --allow-untrusted since packages are unsigned)
+sudo apk add --allow-untrusted ssh-sync
 ```
 
 ##### Manual Installation
