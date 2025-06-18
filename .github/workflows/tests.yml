@@ -155,16 +155,18 @@ jobs:
           
           # Generate a test RSA key pair for Alpine package signing
           openssl genrsa -out ~/.abuild/ssh-sync-test.rsa 2048
-          openssl rsa -in ~/.abuild/ssh-sync-test.rsa -pubout -out ~/.abuild/ssh-sync-test.rsa.pub
           
-          # Convert to the format abuild expects
-          ssh-keygen -f ~/.abuild/ssh-sync-test.rsa -y > ~/.abuild/ssh-sync-test.rsa.pub.tmp
-          mv ~/.abuild/ssh-sync-test.rsa.pub.tmp ~/.abuild/ssh-sync-test.rsa.pub
+          # Extract public key in the format abuild expects (RSA public key format)
+          openssl rsa -in ~/.abuild/ssh-sync-test.rsa -pubout -out ~/.abuild/ssh-sync-test.rsa.pub
           
           chmod 600 ~/.abuild/ssh-sync-test.rsa
           chmod 644 ~/.abuild/ssh-sync-test.rsa.pub
           
           echo "Generated test Alpine signing keys"
+          echo "Private key:"
+          ls -la ~/.abuild/ssh-sync-test.rsa
+          echo "Public key:"
+          ls -la ~/.abuild/ssh-sync-test.rsa.pub
 
       - name: Create APKBUILD file
         run: |
