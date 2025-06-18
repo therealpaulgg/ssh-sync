@@ -10,7 +10,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -21,30 +21,59 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
+
   build-windows:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ">=1.19.7"
       -
+        name: Set GOARCH environment variable
+        run: |
+          if ("${{ matrix.arch }}" -eq "amd64") {
+            echo "GOARCH=amd64" >> $env:GITHUB_ENV
+          } elseif ("${{ matrix.arch }}" -eq "arm64") {
+            echo "GOARCH=arm64" >> $env:GITHUB_ENV
+          }
+        shell: powershell
+      -
         name: Go Build
-        run: go build -o ./win-build/ssh-sync.exe -ldflags "-X main.version=${{github.ref_name}}"
+        run: go build -o ./win-build/ssh-sync-${{ matrix.arch }}.exe -ldflags "-X main.version=${{github.ref_name}}"
         shell: powershell
       -
         name: Inno Build
         run: |
-          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /dMyAppVersion="${{github.ref_name}}" /dMyAppArch="${{ matrix.arch }}" "$env:GITHUB_WORKSPACE\win-build\setup.iss"
         shell: powershell
+
   build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64, arm]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: ">=1.19.7"
+
+      - name: Set GOARCH environment variable
+        run: |
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            echo "GOARCH=amd64" >> $GITHUB_ENV
+          elif [ "${{ matrix.arch }}" = "arm64" ]; then
+            echo "GOARCH=arm64" >> $GITHUB_ENV
+          elif [ "${{ matrix.arch }}" = "arm" ]; then
+            echo "GOARCH=arm" >> $GITHUB_ENV
+            echo "GOARM=7" >> $GITHUB_ENV
+          fi
+
       - name: Go Build
-        run: go build -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
+        run: go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{github.ref_name}}"
