@@ -196,7 +196,7 @@ jobs:
 
       - name: Build Go binary
         run: |
-          go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{ github.ref_name }}"
+          go build -buildvcs=false -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{ github.ref_name }}"
 
       - name: Setup Alpine signing keys
         run: |

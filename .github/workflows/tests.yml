@@ -147,7 +147,7 @@ jobs:
 
       - name: Build Go binary
         run: |
-          go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=test-build"
+          go build -buildvcs=false -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=test-build"
 
       - name: Generate test Alpine signing keys
         run: |
