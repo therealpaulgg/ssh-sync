@@ -44,7 +44,7 @@ jobs:
           fi
       -
         name: Go Build
-        run: go build -o ssh-sync-${{ matrix.arch }}.exe -ldflags "-X main.version=test-build"
+        run: go build -o ssh-sync-${{ matrix.arch }}.exe -ldflags "-X main.version=v0.0.0"
       -
         name: Verify build
         run: ls -la ssh-sync-${{ matrix.arch }}.exe
