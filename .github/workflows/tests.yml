@@ -118,78 +118,49 @@ jobs:
         include:
           - arch: amd64
             alpine_arch: x86_64
+            goarch: amd64
           - arch: arm64
             alpine_arch: aarch64
+            goarch: arm64
           - arch: arm
             alpine_arch: armv7
+            goarch: arm
+            goarm: "7"
     steps:
-      - name: Install dependencies and setup user
+      - name: Install dependencies
         run: |
-          apk add --no-cache git go build-base alpine-sdk coreutils sudo
-          
-          # Create a non-root user for abuild
+          apk add --no-cache git go build-base alpine-sdk sudo
+
+      - name: Setup build user
+        run: |
           adduser -D -s /bin/sh builder
           addgroup builder abuild
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
           
-          # Create the build directory with proper ownership
-          mkdir -p /home/builder/build
-          chown -R builder:builder /home/builder
-          
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go environment and build binary
+      - name: Build Go binary
         run: |
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            export GOARCH=amd64
-          elif [ "${{ matrix.arch }}" = "arm64" ]; then
-            export GOARCH=arm64
-          elif [ "${{ matrix.arch }}" = "arm" ]; then
-            export GOARCH=arm
-            export GOARM=7
-          fi
-          echo "GOARCH=$GOARCH" >> $GITHUB_ENV
-          if [ -n "$GOARM" ]; then
-            echo "GOARM=$GOARM" >> $GITHUB_ENV
-          fi
+          export GOARCH=${{ matrix.goarch }}
+          ${{ matrix.goarm && format('export GOARM={0}', matrix.goarm) || '' }}
+          go build -buildvcs=false -o ssh-sync -ldflags "-X main.version=test-build"
           
-          # Build as root, then copy to builder's directory
-          go build -buildvcs=false -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=test-build"
-          cp ssh-sync-${{ matrix.arch }} /home/builder/build/
-          chown builder:builder /home/builder/build/ssh-sync-${{ matrix.arch }}
-
-      - name: Generate test Alpine signing keys
+      - name: Setup abuild keys
         run: |
-          # Setup keys for the builder user
-          sudo -u builder mkdir -p /home/builder/.abuild
+          sudo -u builder abuild-keygen -n
           
-          # Generate a test RSA key pair for Alpine package signing
-          sudo -u builder openssl genrsa -out /home/builder/.abuild/ssh-sync-test.rsa 2048
-          
-          # Extract public key in the format abuild expects (RSA public key format)
-          sudo -u builder openssl rsa -in /home/builder/.abuild/ssh-sync-test.rsa -pubout -out /home/builder/.abuild/ssh-sync-test.rsa.pub
-          
-          sudo -u builder chmod 600 /home/builder/.abuild/ssh-sync-test.rsa
-          sudo -u builder chmod 644 /home/builder/.abuild/ssh-sync-test.rsa.pub
-          
-          echo "Generated test Alpine signing keys"
-          echo "Private key:"
-          ls -la /home/builder/.abuild/ssh-sync-test.rsa
-          echo "Public key:"
-          ls -la /home/builder/.abuild/ssh-sync-test.rsa.pub
-
-      - name: Create APKBUILD file
+      - name: Create APKBUILD
         run: |
-          sudo -u builder mkdir -p /home/builder/build/apk-build
-          sudo -u builder tee /home/builder/build/apk-build/APKBUILD > /dev/null << EOF
-          # Maintainer: ssh-sync test
+          sudo -u builder mkdir -p /home/builder/ssh-sync
+          sudo -u builder tee /home/builder/ssh-sync/APKBUILD > /dev/null << EOF
+          # Maintainer: Test Build
           pkgname=ssh-sync
-          pkgver=test-build
+          pkgver=test_build
           pkgrel=1
-          pkgdesc="ssh-sync application (test build)"
+          pkgdesc="SSH sync utility"
           arch="${{ matrix.alpine_arch }}"
-          url="https://github.com/your-repo/ssh-sync"
+          url="https://github.com/therealpaulgg/ssh-sync"
           license="MIT"
           source="ssh-sync"
           options="!check"
@@ -199,88 +170,14 @@ jobs:
           }
           EOF
           
-          # Copy the binary to the source location
-          sudo -u builder cp /home/builder/build/ssh-sync-${{ matrix.arch }} /home/builder/build/apk-build/ssh-sync
-          
-          echo "APKBUILD created for architecture: ${{ matrix.alpine_arch }}"
-          echo "Content:"
-          cat /home/builder/build/apk-build/APKBUILD
-
-      - name: Test Alpine package build and signing
+      - name: Copy binary and build package
         run: |
-          cd /home/builder/build/apk-build
+          sudo -u builder cp ssh-sync /home/builder/ssh-sync/
+          cd /home/builder/ssh-sync
+          sudo -u builder CARCH=${{ matrix.alpine_arch }} abuild checksum
+          sudo -u builder CARCH=${{ matrix.alpine_arch }} abuild -r
           
-          # Check current architecture
-          echo "Current system architecture: $(uname -m)"
-          echo "Target Alpine architecture: ${{ matrix.alpine_arch }}"
-          echo "Go target architecture: ${{ matrix.arch }}"
-          
-          # Set the target architecture for abuild
-          export CARCH="${{ matrix.alpine_arch }}"
-          
-          # Run abuild as the builder user
-          sudo -u builder CARCH="${{ matrix.alpine_arch }}" abuild checksum
-          sudo -u builder CARCH="${{ matrix.alpine_arch }}" abuild -r || {
-            echo "Alpine package build failed with abuild, trying manual approach..."
-            echo "Error details from abuild:"
-            
-            # Try to get more details about the failure
-            sudo -u builder CARCH="${{ matrix.alpine_arch }}" abuild -r -v 2>&1 || true
-            
-            # Alternative: create package manually for testing
-            echo "Creating package manually..."
-            sudo -u builder mkdir -p test-pkg/usr/local/bin
-            sudo -u builder cp ssh-sync test-pkg/usr/local/bin/ssh-sync
-            sudo -u builder chmod 755 test-pkg/usr/local/bin/ssh-sync
-            
-            # Create a simple .apk structure (tar.gz with control info)
-            sudo -u builder mkdir -p .control
-            sudo -u builder tee .control/.PKGINFO > /dev/null << PKGEOF
-          pkgname = ssh-sync
-          pkgver = test-build-r1
-          pkgdesc = ssh-sync application (test build)
-          url = https://github.com/your-repo/ssh-sync
-          arch = ${{ matrix.alpine_arch }}
-          license = MIT
-          PKGEOF
-            
-            # Create the package archive
-            sudo -u builder tar -czf ../ssh-sync-test-build-r1.apk -C test-pkg . -C .control .
-            
-            echo "Created test .apk package manually"
-            ls -la ../ssh-sync-test-build-r1.apk
-          }
-          
-          # Check if we have any .apk files
-          if ls /home/builder/packages/*/{{ matrix.alpine_arch }}/*.apk 1> /dev/null 2>&1; then
-            echo "Alpine package built successfully via abuild:"
-            ls -la /home/builder/packages/*/{{ matrix.alpine_arch }}/*.apk
-          elif [ -f "../ssh-sync-test-build-r1.apk" ]; then
-            echo "Alpine package created manually:"
-            ls -la ../ssh-sync-test-build-r1.apk
-          else
-            echo "No Alpine package found - checking all possible locations:"
-            find /home/builder -name "*.apk" -type f 2>/dev/null || true
-            echo "This is expected for cross-architecture builds in testing"
-          fi
-
-      - name: Verify Alpine build artifacts
+      - name: Verify package
         run: |
-          echo "=== Alpine Build Summary for ${{ matrix.arch }} (${{ matrix.alpine_arch }}) ==="
-          echo "Binary created:"
-          ls -la /home/builder/build/ssh-sync-${{ matrix.arch }}
-          
-          echo "Package build directory:"
-          ls -la /home/builder/build/apk-build/
-          
-          if ls /home/builder/packages/*/{{ matrix.alpine_arch }}/*.apk 1> /dev/null 2>&1; then
-            echo "Official .apk packages:"
-            ls -la /home/builder/packages/*/{{ matrix.alpine_arch }}/*.apk
-          fi
-          
-          if [ -f "/home/builder/build/ssh-sync-test-build-r1.apk" ]; then
-            echo "Manual test .apk package:"
-            ls -la /home/builder/build/ssh-sync-test-build-r1.apk
-          fi
-          
-          echo "Alpine package build test completed successfully"
+          echo "Package created:"
+          find /home/builder/packages -name "*.apk" -type f | head -5
