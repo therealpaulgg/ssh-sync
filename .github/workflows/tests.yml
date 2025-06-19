@@ -157,7 +157,7 @@ jobs:
         run: |
           sudo -u builder mkdir -p /home/builder/ssh-sync
           sudo -u builder tee /home/builder/ssh-sync/APKBUILD > /dev/null << EOF
-          # Maintainer: Test Build
+          # Maintainer: Test Builder <test@example.com>
           pkgname=ssh-sync
           pkgver=0.0.1
           pkgrel=1
