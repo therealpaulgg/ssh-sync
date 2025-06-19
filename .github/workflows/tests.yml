@@ -149,6 +149,9 @@ jobs:
       - name: Setup abuild keys
         run: |
           sudo -u builder abuild-keygen -n
+          # Find the generated key and set it as the packager key
+          KEYFILE=$(sudo -u builder find /home/builder/.abuild -name "*.rsa" | head -1)
+          sudo -u builder sh -c "echo 'PACKAGER_PRIVKEY='$KEYFILE > /home/builder/.abuild/abuild.conf"
           
       - name: Create APKBUILD
         run: |
