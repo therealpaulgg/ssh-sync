@@ -157,114 +157,8 @@ jobs:
           target: ${{ secrets.REPO_SERVER_PATH }}
           overwrite: true
 
-  build-alpine:
-    runs-on: ubuntu-latest
-    container:
-      image: alpine:latest
-    strategy:
-      matrix:
-        arch: [amd64, arm64, arm]
-        include:
-          - arch: amd64
-            alpine_arch: x86_64
-          - arch: arm64
-            alpine_arch: aarch64
-          - arch: arm
-            alpine_arch: armv7
-    steps:
-      - name: Install dependencies
-        run: |
-          apk add --no-cache git go build-base alpine-sdk coreutils
-          
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go environment
-        run: |
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            export GOARCH=amd64
-          elif [ "${{ matrix.arch }}" = "arm64" ]; then
-            export GOARCH=arm64
-          elif [ "${{ matrix.arch }}" = "arm" ]; then
-            export GOARCH=arm
-            export GOARM=7
-          fi
-          echo "GOARCH=$GOARCH" >> $GITHUB_ENV
-          if [ -n "$GOARM" ]; then
-            echo "GOARM=$GOARM" >> $GITHUB_ENV
-          fi
-
-      - name: Build Go binary
-        run: |
-          go build -buildvcs=false -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{ github.ref_name }}"
-
-      - name: Setup Alpine signing keys
-        run: |
-          mkdir -p ~/.abuild
-          echo "${{ secrets.ALPINE_PRIVATE_KEY }}" | base64 -d > ~/.abuild/ssh-sync.rsa
-          echo "${{ secrets.ALPINE_PUBLIC_KEY }}" | base64 -d > ~/.abuild/ssh-sync.rsa.pub
-          chmod 600 ~/.abuild/ssh-sync.rsa
-          chmod 644 ~/.abuild/ssh-sync.rsa.pub
-
-      - name: Create APKBUILD file
-        run: |
-          mkdir -p apk-build
-          cd apk-build
-          cat > APKBUILD << 'EOF'
-          # Maintainer: ssh-sync
-          pkgname=ssh-sync
-          pkgver=${{ github.ref_name }}
-          pkgrel=1
-          pkgdesc="ssh-sync application"
-          arch="${{ matrix.alpine_arch }}"
-          url="https://github.com/your-repo/ssh-sync"
-          license="MIT"
-          source="ssh-sync"
-          options="!check"
-
-          package() {
-              install -Dm755 "$srcdir/ssh-sync" "$pkgdir/usr/local/bin/ssh-sync"
-          }
-          EOF
-          
-          # Copy the binary to the source location
-          cp ../ssh-sync-${{ matrix.arch }} ssh-sync
-
-      - name: Build and sign APK package
-        run: |
-          cd apk-build
-          
-          # Create checksums
-          abuild checksum
-          
-          # Build the package
-          abuild -r
-          
-          # The built package will be in ~/packages/apk-build/${{ matrix.alpine_arch }}/
-          mkdir -p ../alpine-packages
-          cp ~/packages/*/{{ matrix.alpine_arch }}/*.apk ../alpine-packages/ || true
-
-      - name: Upload Alpine packages as artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: alpine-packages-${{ matrix.arch }}
-          path: alpine-packages/*.apk
-          retention-days: 5
-
-      - name: Deploy Alpine packages to repository server
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.REPO_SERVER_HOST }}
-          username: ${{ secrets.REPO_SERVER_USER }}
-          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
-          port: ${{ secrets.REPO_SERVER_PORT }}
-          source: "alpine-packages/*.apk"
-          target: ${{ secrets.REPO_SERVER_PATH }}/alpine/${{ matrix.alpine_arch }}/
-          overwrite: true
-
   sign-and-update-repositories:
-    needs: [build-linux, build-alpine]
+    needs: [build-linux]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
@@ -392,41 +286,6 @@ jobs:
 
             echo "Debian repository updated and signed successfully"
 
-      - name: Setup Alpine Repository Structure
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.REPO_SERVER_HOST }}
-          username: ${{ secrets.REPO_SERVER_USER }}
-          key: ${{ secrets.REPO_SERVER_SSH_KEY }}
-          port: ${{ secrets.REPO_SERVER_PORT }}
-          script: |
-            cd ${{ secrets.REPO_SERVER_PATH }}/alpine
-
-            # Ensure directory structure exists
-            mkdir -p x86_64 aarch64 armv7
-
-            # Verify packages are present and set proper permissions
-            for arch in x86_64 aarch64 armv7; do
-                if [ -d "$arch" ] && [ "$(ls -A $arch/*.apk 2>/dev/null)" ]; then
-                    echo "Found Alpine packages for $arch:"
-                    ls -la $arch/*.apk
-                    chmod 644 $arch/*.apk
-                else
-                    echo "No Alpine packages found for $arch"
-                fi
-            done
-
-            # Export Alpine public key for users to import
-            if [ ! -f alpine-signing-key.pub ]; then
-                echo "${{ secrets.ALPINE_PUBLIC_KEY }}" | base64 -d > alpine-signing-key.pub
-                chmod 644 alpine-signing-key.pub
-                echo "Alpine public key exported for repository users"
-            fi
-
-            echo "Alpine repository structure setup completed"
-            echo "Note: Packages are pre-signed and ready for use"
-            echo "Users can add the repository and import the signing key manually"
-
       - name: Setup Arch Linux Repository
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -488,19 +347,13 @@ jobs:
             gpg --armor --export "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" > pubkey.gpg
             gpg --armor --export "${{ secrets.REPO_SERVER_GPG_KEY_ID }}" > ssh-sync-repo.asc
 
-            # Export Alpine public key for distribution
-            if [ -f ~/.abuild/ssh-sync.rsa.pub ]; then
-                cp ~/.abuild/ssh-sync.rsa.pub alpine-signing-key.pub
-                chmod 644 alpine-signing-key.pub
-            fi
-
             # Set proper permissions
             chmod 644 pubkey.gpg ssh-sync-repo.asc
 
             echo "Public keys exported successfully"
 
   release:
-    needs: [build-docker, build-windows, build-linux, build-alpine, sign-and-update-repositories]
+    needs: [build-docker, build-windows, build-linux, sign-and-update-repositories]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -508,5 +361,5 @@ jobs:
         uses: actions/download-artifact@v4
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./ssh-sync-setup-amd64/ssh-sync-setup-amd64.exe,./ssh-sync-setup-arm64/ssh-sync-setup-arm64.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/debian/amd64/*.deb,./packages-amd64/rpm/amd64/*.rpm,./packages-amd64/arch/amd64/*.pkg.tar.zst,./packages-arm64/debian/arm64/*.deb,./packages-arm64/rpm/arm64/*.rpm,./packages-arm64/arch/arm64/*.pkg.tar.zst,./packages-arm/debian/arm/*.deb,./packages-arm/rpm/arm/*.rpm,./packages-arm/arch/arm/*.pkg.tar.zst,./alpine-packages-amd64/*.apk,./alpine-packages-arm64/*.apk,./alpine-packages-arm/*.apk"
+          artifacts: "./ssh-sync-setup-amd64/ssh-sync-setup-amd64.exe,./ssh-sync-setup-arm64/ssh-sync-setup-arm64.exe,./ssh-sync-amd64/ssh-sync-amd64,./ssh-sync-arm64/ssh-sync-arm64,./ssh-sync-arm/ssh-sync-arm,./packages-amd64/debian/amd64/*.deb,./packages-amd64/rpm/amd64/*.rpm,./packages-amd64/arch/amd64/*.pkg.tar.zst,./packages-arm64/debian/arm64/*.deb,./packages-arm64/rpm/arm64/*.rpm,./packages-arm64/arch/arm64/*.pkg.tar.zst,./packages-arm/debian/arm/*.deb,./packages-arm/rpm/arm/*.rpm,./packages-arm/arch/arm/*.pkg.tar.zst"
           token: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
