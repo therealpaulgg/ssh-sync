@@ -144,6 +144,13 @@ jobs:
           # Build binary
           go build -buildvcs=false -o ssh-sync -ldflags "-X main.version=test-build"
           
+          # Verify binary was created
+          ls -la ssh-sync
+          
+          # Copy to a location accessible by builder user
+          cp ssh-sync /tmp/ssh-sync
+          chmod 755 /tmp/ssh-sync
+          
           # Switch to builder user and setup
           sudo -u builder sh << 'SCRIPT'
           cd /home/builder
@@ -170,8 +177,11 @@ jobs:
           }
           EOF
           
-          # Copy binary
-          cp /github/workspace/ssh-sync .
+          # Copy binary to package directory
+          cp /tmp/ssh-sync .
+          
+          # Verify file is there
+          ls -la ssh-sync
           
           # Build package
           abuild checksum
