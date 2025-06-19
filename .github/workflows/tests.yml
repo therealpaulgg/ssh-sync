@@ -44,7 +44,7 @@ jobs:
           fi
       -
         name: Go Build
-        run: go build -o ssh-sync-${{ matrix.arch }}.exe -ldflags "-X main.version=${{github.ref_name}}"
+        run: go build -o ssh-sync-${{ matrix.arch }}.exe -ldflags "-X main.version=v0.0.0"
       -
         name: Verify build
         run: ls -la ssh-sync-${{ matrix.arch }}.exe
@@ -72,7 +72,7 @@ jobs:
           fi
 
       - name: Go Build
-        run: go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{github.ref_name}}"
+        run: go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=test-build"
 
       - name: Install FPM
         run: |
@@ -83,21 +83,21 @@ jobs:
       - name: Create test packages
         run: |
           # Create a .deb package
-          fpm -s dir -t deb -a ${{ matrix.arch }} -n ssh-sync -v "${{github.ref_name}}" --description "ssh-sync test build" \
+          fpm -s dir -t deb -a ${{ matrix.arch }} -n ssh-sync -v "test-build" --description "ssh-sync test build" \
           --deb-no-default-config-files \
           ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
 
           # Create an .rpm package
-          fpm -s dir -t rpm -a ${{ matrix.arch }} -n ssh-sync -v "${{github.ref_name}}" --description "ssh-sync test build" \
+          fpm -s dir -t rpm -a ${{ matrix.arch }} -n ssh-sync -v "test-build" --description "ssh-sync test build" \
           ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
 
           # Create an Arch Linux package (.tar.zst)
-          fpm -s dir -t tar -a ${{ matrix.arch }} -n ssh-sync -v "${{github.ref_name}}" --description "ssh-sync test build" \
+          fpm -s dir -t tar -a ${{ matrix.arch }} -n ssh-sync -v "test-build" --description "ssh-sync test build" \
           ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
           # Compress with zstd and rename to follow Arch naming convention
-          mv ssh-sync.tar ssh-sync-${{github.ref_name}}-${{ matrix.arch }}.tar
-          zstd ssh-sync-${{github.ref_name}}-${{ matrix.arch }}.tar -o ssh-sync-${{github.ref_name}}-${{ matrix.arch }}.pkg.tar.zst
-          rm ssh-sync-${{github.ref_name}}-${{ matrix.arch }}.tar
+          mv ssh-sync.tar ssh-sync-test-build-${{ matrix.arch }}.tar
+          zstd ssh-sync-test-build-${{ matrix.arch }}.tar -o ssh-sync-test-build-${{ matrix.arch }}.pkg.tar.zst
+          rm ssh-sync-test-build-${{ matrix.arch }}.tar
 
       - name: Verify packages were created
         run: |
@@ -142,7 +142,7 @@ jobs:
           fi
           
           # Build binary
-          go build -buildvcs=false -o ssh-sync -ldflags "-X main.version=${{github.ref_name}}"
+          go build -buildvcs=false -o ssh-sync -ldflags "-X main.version=test-build"
           
           # Verify binary was created
           ls -la ssh-sync
@@ -163,7 +163,7 @@ jobs:
           cd package
           cat > APKBUILD << EOF
           pkgname=ssh-sync
-          pkgver=${{github.ref_name}}
+          pkgver=test-build
           pkgrel=1
           pkgdesc="ssh-sync application"
           arch="${{ matrix.alpine_arch }}"
