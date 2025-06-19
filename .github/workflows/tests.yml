@@ -169,7 +169,7 @@ jobs:
           options="!check"
 
           package() {
-              install -Dm755 "\$srcdir/ssh-sync" "\$pkgdir/usr/local/bin/ssh-sync"
+              install -Dm755 "\$srcdir/ssh-sync" "\$pkgdir/usr/bin/ssh-sync"
           }
           EOF
           
