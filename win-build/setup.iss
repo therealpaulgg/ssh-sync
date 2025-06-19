@@ -13,9 +13,6 @@
 #elif MyAppArch == "arm64"
   #define MyAppExeName "ssh-sync-arm64.exe"
   #define MyArchitecture "arm64"
-#elif MyAppARch == "arm"
-  #define MyAppExeName "ssh-sync-arm.exe"
-  #define MyArchitecture "arm"
 #endif
 
 [Setup]
@@ -40,8 +37,6 @@ OutputBaseFilename=ssh-sync-setup-{#MyAppArch}
 #if MyAppArch == "arm64"
 ArchitecturesAllowed=arm64
 ArchitecturesInstallIn64BitMode=arm64
-#elif MyAppArch == "arm"
-ArchitecturesAllowed=arm
 #endif
 Compression=lzma
 SolidCompression=yes
