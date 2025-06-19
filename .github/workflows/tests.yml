@@ -77,3 +77,33 @@ jobs:
 
       - name: Go Build
         run: go build -o ssh-sync-${{ matrix.arch }} -ldflags "-X main.version=${{github.ref_name}}"
+
+      - name: Install FPM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ruby ruby-dev rubygems build-essential rpm zstd
+          sudo gem install --no-document fpm
+
+      - name: Create test packages
+        run: |
+          # Create a .deb package
+          fpm -s dir -t deb -a ${{ matrix.arch }} -n ssh-sync -v "test-build" --description "ssh-sync test build" \
+          --deb-no-default-config-files \
+          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+
+          # Create an .rpm package
+          fpm -s dir -t rpm -a ${{ matrix.arch }} -n ssh-sync -v "test-build" --description "ssh-sync test build" \
+          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+
+          # Create an Arch Linux package (.tar.zst)
+          fpm -s dir -t tar -a ${{ matrix.arch }} -n ssh-sync -v "test-build" --description "ssh-sync test build" \
+          ./ssh-sync-${{ matrix.arch }}=/usr/local/bin/ssh-sync
+          # Compress with zstd and rename to follow Arch naming convention
+          mv ssh-sync.tar ssh-sync-test-build-${{ matrix.arch }}.tar
+          zstd ssh-sync-test-build-${{ matrix.arch }}.tar -o ssh-sync-test-build-${{ matrix.arch }}.pkg.tar.zst
+          rm ssh-sync-test-build-${{ matrix.arch }}.tar
+
+      - name: Verify packages were created
+        run: |
+          echo "Created packages:"
+          ls -la *.deb *.rpm *.pkg.tar.zst
