@@ -129,7 +129,7 @@ jobs:
     steps:
       - name: Install dependencies
         run: |
-          apk add --no-cache git go build-base alpine-sdk sudo
+          apk add --no-cache git go build-base alpine-sdk sudo binutils
 
       - name: Setup build user
         run: |
