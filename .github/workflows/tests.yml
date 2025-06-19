@@ -156,7 +156,7 @@ jobs:
           cd /home/builder
           
           # Generate Alpine signing keys
-          abuild-keygen -a -n
+          abuild-keygen -a -i
           
           # Create APKBUILD
           mkdir -p package
