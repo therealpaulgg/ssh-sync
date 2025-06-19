@@ -159,7 +159,7 @@ jobs:
           sudo -u builder tee /home/builder/ssh-sync/APKBUILD > /dev/null << EOF
           # Maintainer: Test Build
           pkgname=ssh-sync
-          pkgver=test_build
+          pkgver=0.0.1
           pkgrel=1
           pkgdesc="SSH sync utility"
           arch="${{ matrix.alpine_arch }}"
