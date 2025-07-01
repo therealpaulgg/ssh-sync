@@ -37,7 +37,7 @@ func RemoveMachine(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	_, exists := lo.Find(machines, func(x dto.MachineDto) bool {
+	machine, exists := lo.Find(machines, func(x dto.MachineDto) bool {
 		return x.Name == answer
 	})
 	if !exists {
@@ -52,6 +52,6 @@ func RemoveMachine(c *cli.Context) error {
 	if answer != "y" {
 		return nil
 	}
-	err = retrieval.DeleteMachine(profile, answer)
+	err = retrieval.DeleteMachine(profile, machine.Name)
 	return err
 }

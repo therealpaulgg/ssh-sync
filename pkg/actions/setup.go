@@ -137,6 +137,9 @@ func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
 	if res.StatusCode == 404 {
 		return false, nil
 	}
+	if res.StatusCode != 200 {
+		return false, errors.New("failed to check if account exists. status code: " + strconv.Itoa(res.StatusCode))
+	}
 	return true, nil
 }
 

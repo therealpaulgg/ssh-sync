@@ -1,4 +1,4 @@
-FROM golang:buster
+FROM golang:bookworm
 RUN mkdir /app
 COPY ./pkg/ /app/pkg
 COPY . /app
