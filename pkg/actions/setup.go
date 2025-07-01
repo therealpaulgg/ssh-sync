@@ -134,8 +134,11 @@ func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if res.StatusCode == 404 {
+	if res.StatusCode == http.StatusNotFound {
 		return false, nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return false, errors.New("failed to check if account exists. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	return true, nil
 }
@@ -226,7 +229,7 @@ func newAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to create user. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	return nil
