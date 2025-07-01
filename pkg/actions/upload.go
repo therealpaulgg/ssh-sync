@@ -46,7 +46,7 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	masterKey, err := utils.RetrieveMasterKey()
@@ -125,7 +125,7 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if res2.StatusCode != 200 {
+	if res2.StatusCode != http.StatusOK {
 		return errors.New("failed to upload data. status code: " + strconv.Itoa(res2.StatusCode))
 	}
 	fmt.Println("Successfully uploaded keys.")

@@ -29,7 +29,7 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	if err != nil {
 		return data, err
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return data, errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
@@ -65,7 +65,7 @@ func DeleteKey(profile *models.Profile, key dto.KeyDto) error {
 	if err != nil {
 		return err
 	}
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to delete data. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	return nil
