@@ -46,6 +46,15 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 		}
 		data.Keys[i].Data = decryptedKey
 	}
+	
+	if len(data.KnownHosts) > 0 {
+		decryptedKnownHosts, err := utils.DecryptWithMasterKey(data.KnownHosts, masterKey)
+		if err != nil {
+			return data, err
+		}
+		data.KnownHosts = decryptedKnownHosts
+	}
+	
 	return data, nil
 }
 
