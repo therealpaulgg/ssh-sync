@@ -46,8 +46,7 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-; Create a copy without architecture suffix for easy command-line access
+; Install the architecture-specific binary with the generic name
 Source: "{#MyAppExeName}"; DestDir: "{app}"; DestName: "ssh-sync.exe"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
