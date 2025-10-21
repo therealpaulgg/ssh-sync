@@ -1,7 +1,7 @@
 
 # ssh-sync: Seamless SSH Key Management
 
-ssh-sync is a powerful CLI tool designed to simplify the way you manage and synchronize your SSH keys and configurations across multiple machines. With ssh-sync, gone are the days of manually copying SSH keys or adjusting configurations when switching devices. Whether you're moving between workstations or setting up a new machine, ssh-sync ensures your SSH environment is up and running effortlessly.
+ssh-sync is a powerful CLI tool designed to simplify the way you manage and synchronize your SSH keys, configurations, and known_hosts file across multiple machines. With ssh-sync, gone are the days of manually copying SSH keys, adjusting configurations, or dealing with known_hosts warnings when switching devices. Whether you're moving between workstations or setting up a new machine, ssh-sync ensures your SSH environment is up and running effortlessly.
 
 [![release](https://github.com/therealpaulgg/ssh-sync/actions/workflows/release.yml/badge.svg)](https://github.com/therealpaulgg/ssh-sync/actions/workflows/release.yml)
 
@@ -145,7 +145,7 @@ To upload your SSH keys and configuration to the server, run:
 ssh-sync upload
 ```
 
-This command securely transmits your SSH keys and configuration to the chosen server, making them accessible from your other machines.
+This command securely transmits your SSH keys, SSH configuration, and known_hosts file (if present) to the chosen server, making them accessible from your other machines. All data is encrypted before transmission using your master key.
 
 ### Downloading Keys
 
@@ -155,11 +155,11 @@ To download your SSH keys to a new or existing machine, ensuring it's set up for
 ssh-sync download
 ```
 
-This command fetches your SSH keys from the server, setting up your SSH environment on the machine.
+This command fetches your SSH keys, SSH configuration, and known_hosts file from the server, setting up your complete SSH environment on the machine. The known_hosts file helps avoid host key verification warnings when connecting to previously known servers.
 
 #### Conflict Resolution
 
-In case there is a difference between a local file and one on your server, ssh-sync will let you know and you can opt to overwrite, skip, or save a file with a `.duplicate` extension for you to review manually.
+In case there is a difference between a local file (including SSH keys and known_hosts) and one on your server, ssh-sync will let you know and you can opt to overwrite, skip, or save a file with a `.duplicate` extension for you to review manually.
 
 ```shell
 diff detected for my_key.
@@ -168,6 +168,8 @@ diff detected for my_key.
 3. Save new file (as .duplicate extension for manual resolution)
 Please choose an option (will skip by default):
 ```
+
+The same conflict resolution applies to the known_hosts file, allowing you to merge or review changes as needed.
 
 #### Safe Mode
 

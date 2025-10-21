@@ -69,7 +69,7 @@ func Upload(c *cli.Context) error {
 	}
 	hosts := []models.Host{}
 	for _, file := range data {
-		if file.IsDir() || file.Name() == "authorized_keys" {
+		if file.IsDir() || file.Name() == "authorized_keys" || file.Name() == "known_hosts" {
 			continue
 		} else if file.Name() == "config" {
 			hosts, err = utils.ParseConfig()
@@ -109,6 +109,25 @@ func Upload(c *cli.Context) error {
 			return err
 		}
 		if _, err := w.Write(jsonBytes); err != nil {
+			return err
+		}
+	}
+	// Read and encrypt known_hosts file if it exists
+	knownHostsPath := filepath.Join(p, "known_hosts")
+	if _, err := os.Stat(knownHostsPath); err == nil {
+		knownHostsData, err := os.ReadFile(knownHostsPath)
+		if err != nil {
+			return err
+		}
+		encKnownHosts, err := utils.EncryptWithMasterKey(knownHostsData, masterKey)
+		if err != nil {
+			return err
+		}
+		w, err := multipartWriter.CreateFormField("known_hosts")
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(encKnownHosts); err != nil {
 			return err
 		}
 	}

@@ -7,11 +7,12 @@ type Dto interface {
 }
 
 type DataDto struct {
-	ID        uuid.UUID      `json:"id"`
-	Username  string         `json:"username"`
-	Keys      []KeyDto       `json:"keys"`
-	SshConfig []SshConfigDto `json:"ssh_config"`
-	Machines  []MachineDto   `json:"machines"`
+	ID         uuid.UUID      `json:"id"`
+	Username   string         `json:"username"`
+	Keys       []KeyDto       `json:"keys"`
+	SshConfig  []SshConfigDto `json:"ssh_config"`
+	KnownHosts []byte         `json:"known_hosts"`
+	Machines   []MachineDto   `json:"machines"`
 }
 
 type KeyDto struct {

@@ -54,6 +54,10 @@ func Download(c *cli.Context) error {
 		}
 	}
 
+	if err := utils.WriteKnownHosts(data.KnownHosts, directory); err != nil {
+		return err
+	}
+
 	err = checkForDeletedKeys(data.Keys, directory)
 
 	if err != nil {
@@ -75,7 +79,7 @@ func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 		if d.IsDir() {
 			return nil
 		}
-		if d.Name() == "config" {
+		if d.Name() == "config" || d.Name() == "known_hosts" {
 			return nil
 		}
 		_, exists := lo.Find(keys, func(key dto.KeyDto) bool {
