@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Dto interface {
 	DataDto | UserDto | UserMachineDto | ChallengeResponseDto | ChallengeSuccessEncryptedKeyDto | MessageDto | EncryptedMasterKeyDto | MasterKeyDto | PublicKeyDto
@@ -15,10 +19,11 @@ type DataDto struct {
 }
 
 type KeyDto struct {
-	ID       uuid.UUID `json:"id"`
-	UserID   uuid.UUID `json:"user_id"`
-	Filename string    `json:"filename"`
-	Data     []byte    `json:"data"`
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	Filename  string     `json:"filename"`
+	Data      []byte     `json:"data"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 }
 
 type SshConfigDto struct {

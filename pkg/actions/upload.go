@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
@@ -49,6 +50,19 @@ func Upload(c *cli.Context) error {
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
+
+	// Decode the server response to get existing keys with their timestamps
+	var serverData dto.DataDto
+	if err := json.NewDecoder(res.Body).Decode(&serverData); err != nil {
+		return err
+	}
+	res.Body.Close()
+
+	// Create a map of server keys by filename for quick lookup
+	serverKeysByFilename := make(map[string]dto.KeyDto)
+	for _, key := range serverData.Keys {
+		serverKeysByFilename[key.Filename] = key
+	}
 	masterKey, err := utils.RetrieveMasterKey()
 	if err != nil {
 		return err
@@ -81,6 +95,30 @@ func Upload(c *cli.Context) error {
 			}
 			continue
 		}
+
+		// Get file info to retrieve modification time
+		fileInfo, err := file.Info()
+		if err != nil {
+			return err
+		}
+		localModTime := fileInfo.ModTime()
+
+		// Check if this key exists on the server with a newer timestamp
+		if serverKey, exists := serverKeysByFilename[file.Name()]; exists {
+			// Only compare if server has timestamp information
+			if serverKey.UpdatedAt != nil && serverKey.UpdatedAt.After(localModTime) {
+				// Server key is newer, prompt user
+				shouldOverwrite, err := utils.PromptOverwriteNewerKey(file.Name(), localModTime, *serverKey.UpdatedAt)
+				if err != nil {
+					return err
+				}
+				if !shouldOverwrite {
+					fmt.Printf("Skipping %s\n", file.Name())
+					continue
+				}
+			}
+		}
+
 		f, err := os.OpenFile(filepath.Join(p, file.Name()), os.O_RDONLY, 0600)
 		if err != nil {
 			return err
