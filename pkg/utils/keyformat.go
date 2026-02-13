@@ -42,7 +42,7 @@ func detectKeyFormatFromBytes(data []byte) KeyFormat {
 			break
 		}
 		switch block.Type {
-		case "SSHSYNC PQ MASTER SEED", "MLDSA65 PRIVATE KEY", "MLKEM768 DECAPSULATION KEY SEED":
+		case "SSHSYNC PQ MASTER SEED":
 			return FormatPostQuantum
 		case "EC PRIVATE KEY":
 			return FormatLegacyEC

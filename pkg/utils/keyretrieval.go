@@ -74,47 +74,21 @@ func retrieveMasterSeed() ([]byte, error) {
 	return nil, nil
 }
 
-// RetrieveSigningPrivateKey loads the ML-DSA-65 private key from ~/.ssh-sync/keypair.
-// Supports both master seed format (derives via HKDF) and legacy separate PEM blocks.
+// RetrieveSigningPrivateKey loads the ML-DSA-65 private key from ~/.ssh-sync/keypair
+// by deriving it from the PQ master seed via HKDF.
 func RetrieveSigningPrivateKey() (*mldsa65.PrivateKey, error) {
-	// Try master seed first
 	seed, err := retrieveMasterSeed()
 	if err != nil {
 		return nil, err
 	}
-	if seed != nil {
-		_, sk, _, err := DerivePQKeys(seed)
-		if err != nil {
-			return nil, fmt.Errorf("deriving signing key from master seed: %w", err)
-		}
-		return sk, nil
+	if seed == nil {
+		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-
-	// Fall back to legacy separate PEM block
-	u, err := user.Current()
+	_, sk, _, err := DerivePQKeys(seed)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("deriving signing key from master seed: %w", err)
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair")
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		var block *pem.Block
-		block, data = pem.Decode(data)
-		if block == nil {
-			break
-		}
-		if block.Type == "MLDSA65 PRIVATE KEY" {
-			var sk mldsa65.PrivateKey
-			if err := sk.UnmarshalBinary(block.Bytes); err != nil {
-				return nil, fmt.Errorf("unmarshaling ML-DSA-65 private key: %w", err)
-			}
-			return &sk, nil
-		}
-	}
-	return nil, fmt.Errorf("ML-DSA-65 private key not found in keypair file")
+	return sk, nil
 }
 
 // RetrieveSigningPublicKey loads the ML-DSA-65 public key from ~/.ssh-sync/keypair.pub.
@@ -145,90 +119,38 @@ func RetrieveSigningPublicKey() (*mldsa65.PublicKey, error) {
 	return nil, fmt.Errorf("ML-DSA-65 public key not found in %s", p)
 }
 
-// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from ~/.ssh-sync/keypair.
-// Supports both master seed format (derives via HKDF) and legacy separate PEM blocks.
+// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from ~/.ssh-sync/keypair
+// by deriving it from the PQ master seed via HKDF.
 func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
-	// Try master seed first
 	seed, err := retrieveMasterSeed()
 	if err != nil {
 		return nil, err
 	}
-	if seed != nil {
-		_, _, dk, err := DerivePQKeys(seed)
-		if err != nil {
-			return nil, fmt.Errorf("deriving decapsulation key from master seed: %w", err)
-		}
-		return dk, nil
+	if seed == nil {
+		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-
-	// Fall back to legacy separate PEM block
-	u, err := user.Current()
+	_, _, dk, err := DerivePQKeys(seed)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("deriving decapsulation key from master seed: %w", err)
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair")
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		var block *pem.Block
-		block, data = pem.Decode(data)
-		if block == nil {
-			break
-		}
-		if block.Type == "MLKEM768 DECAPSULATION KEY SEED" {
-			dk, err := mlkem.NewDecapsulationKey768(block.Bytes)
-			if err != nil {
-				return nil, fmt.Errorf("creating ML-KEM-768 decapsulation key: %w", err)
-			}
-			return dk, nil
-		}
-	}
-	return nil, fmt.Errorf("ML-KEM-768 decapsulation key not found in keypair file")
+	return dk, nil
 }
 
-// RetrieveEncapsulationKey derives the ML-KEM-768 encapsulation key from the local keypair.
-// With master seed format, derives from seed. With legacy format, reads from keypair.pub.
+// RetrieveEncapsulationKey derives the ML-KEM-768 encapsulation key from the local keypair
+// by deriving it from the PQ master seed via HKDF.
 func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
-	// Try master seed first — derive encapsulation key from it
 	seed, err := retrieveMasterSeed()
 	if err != nil {
 		return nil, err
 	}
-	if seed != nil {
-		_, _, dk, err := DerivePQKeys(seed)
-		if err != nil {
-			return nil, fmt.Errorf("deriving encapsulation key from master seed: %w", err)
-		}
-		return dk.EncapsulationKey(), nil
+	if seed == nil {
+		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-
-	// Fall back to reading from keypair.pub (legacy format)
-	u, err := user.Current()
+	_, _, dk, err := DerivePQKeys(seed)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("deriving encapsulation key from master seed: %w", err)
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		var block *pem.Block
-		block, data = pem.Decode(data)
-		if block == nil {
-			break
-		}
-		if block.Type == "MLKEM768 ENCAPSULATION KEY" {
-			ek, err := mlkem.NewEncapsulationKey768(block.Bytes)
-			if err != nil {
-				return nil, fmt.Errorf("creating ML-KEM-768 encapsulation key: %w", err)
-			}
-			return ek, nil
-		}
-	}
-	return nil, fmt.Errorf("ML-KEM-768 encapsulation key not found")
+	return dk.EncapsulationKey(), nil
 }
 
 // BuildFullPublicKeyPEM returns PEM-encoded bytes containing both ML-DSA-65
@@ -236,33 +158,25 @@ func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 // during existing account setup — the server relays both keys to Machine A
 // (which needs ML-KEM to encrypt the master key), but only stores ML-DSA.
 func BuildFullPublicKeyPEM() ([]byte, error) {
-	// Try master seed first
 	seed, err := retrieveMasterSeed()
 	if err != nil {
 		return nil, err
 	}
-	if seed != nil {
-		sigPub, _, dk, err := DerivePQKeys(seed)
-		if err != nil {
-			return nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
-		}
-		var buf bytes.Buffer
-		if err := pem.Encode(&buf, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
-			return nil, err
-		}
-		if err := pem.Encode(&buf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
-			return nil, err
-		}
-		return buf.Bytes(), nil
+	if seed == nil {
+		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-
-	// Fall back: read keypair.pub which should already have both blocks (legacy PQ format)
-	u, err := user.Current()
+	sigPub, _, dk, err := DerivePQKeys(seed)
 	if err != nil {
+		return nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := pem.Encode(&buf, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
 		return nil, err
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
-	return os.ReadFile(p)
+	if err := pem.Encode(&buf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // --- Format-aware master key retrieval ---
