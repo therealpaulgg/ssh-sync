@@ -82,50 +82,47 @@ func generateKey() error {
 
 // generateKeyClassic generates a classical ECDSA P-256 keypair.
 // This is the original key generation used before post-quantum support.
-func generateKeyClassic() error {
+func generateKeyClassic() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return fmt.Errorf("generating ECDSA key: %w", err)
-	}
 	pub := &priv.PublicKey
-
-	u, err := user.Current()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync")
+	// then the program will save the keypair to ~/.ssh-sync/keypair.pub and ~/.ssh-sync/keypair
+	user, err := user.Current()
+	if err != nil {
+		return nil, nil, err
+	}
+	p := filepath.Join(user.HomeDir, ".ssh-sync")
 	if err := os.MkdirAll(p, 0700); err != nil {
-		return err
+		return nil, nil, err
 	}
-
 	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	privBytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-
 	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer pubOut.Close()
 	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
-		return err
+		return nil, nil, err
 	}
-
 	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 	defer privOut.Close()
 	if err := pem.Encode(privOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return err
+		return nil, nil, err
 	}
 
-	return nil
+	return priv, pub, nil
 }
 
 func saveMasterKey(masterKey []byte) error {
@@ -246,7 +243,7 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	// then the program will generate a keypair, and upload the public key to the server
 	if classic {
 		fmt.Println("Generating classical keypair (ECDSA P-256)...")
-		if err := generateKeyClassic(); err != nil {
+		if _, _, err := generateKeyClassic(); err != nil {
 			return err
 		}
 	} else {
@@ -351,7 +348,7 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 	fmt.Println(challengeSuccessResponse.Data.Message)
 	if classic {
 		fmt.Println("Generating classical keypair (ECDSA P-256)...")
-		if err := generateKeyClassic(); err != nil {
+		if _, _, err := generateKeyClassic(); err != nil {
 			return err
 		}
 	} else {
