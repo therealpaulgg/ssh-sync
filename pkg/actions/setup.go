@@ -4,10 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
+	"crypto/mlkem"
 	"crypto/rand"
-	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -21,6 +19,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/gobwas/ws"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
@@ -28,47 +27,64 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	pub := &priv.PublicKey
+// generateKey generates post-quantum keypairs:
+// - ML-DSA-65 for digital signatures (JWT signing)
+// - ML-KEM-768 for key encapsulation (master key encryption)
+// Keys are stored as PEM-encoded files in ~/.ssh-sync/
+func generateKey() error {
+	u, err := user.Current()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	// then the program will save the keypair to ~/.ssh-sync/keypair.pub and ~/.ssh-sync/keypair
-	user, err := user.Current()
-	if err != nil {
-		return nil, nil, err
-	}
-	p := filepath.Join(user.HomeDir, ".ssh-sync")
+	p := filepath.Join(u.HomeDir, ".ssh-sync")
 	if err := os.MkdirAll(p, 0700); err != nil {
-		return nil, nil, err
-	}
-	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
-	if err != nil {
-		return nil, nil, err
-	}
-	privBytes, err := x509.MarshalECPrivateKey(priv)
-	if err != nil {
-		return nil, nil, err
-	}
-	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer pubOut.Close()
-	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
-		return nil, nil, err
-	}
-	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer privOut.Close()
-	if err := pem.Encode(privOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	return priv, pub, nil
+	// Generate ML-DSA-65 signing keypair
+	sigPub, sigPriv, err := mldsa65.GenerateKey(rand.Reader)
+	if err != nil {
+		return fmt.Errorf("generating ML-DSA-65 key: %w", err)
+	}
+	sigPubBytes := sigPub.Bytes()
+	sigPrivBytes := sigPriv.Bytes()
+
+	// Generate ML-KEM-768 key encapsulation keypair
+	kemDK, err := mlkem.GenerateKey768()
+	if err != nil {
+		return fmt.Errorf("generating ML-KEM-768 key: %w", err)
+	}
+	kemEK := kemDK.EncapsulationKey()
+	kemDKSeed := kemDK.Bytes()   // 64-byte seed
+	kemEKBytes := kemEK.Bytes()  // 1184-byte encapsulation key
+
+	// Write public key file (signing + encapsulation keys)
+	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer pubOut.Close()
+	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPubBytes}); err != nil {
+		return err
+	}
+	if err := pem.Encode(pubOut, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: kemEKBytes}); err != nil {
+		return err
+	}
+
+	// Write private key file (signing + decapsulation keys)
+	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer privOut.Close()
+	if err := pem.Encode(privOut, &pem.Block{Type: "MLDSA65 PRIVATE KEY", Bytes: sigPrivBytes}); err != nil {
+		return err
+	}
+	if err := pem.Encode(privOut, &pem.Block{Type: "MLKEM768 DECAPSULATION KEY SEED", Bytes: kemDKSeed}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func saveMasterKey(masterKey []byte) error {
@@ -187,8 +203,8 @@ func newAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	// then the program will generate a keypair, and upload the public key to the server
-	fmt.Println("Generating keypair...")
-	if _, _, err := generateKey(); err != nil {
+	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+	if err := generateKey(); err != nil {
 		return err
 	}
 	masterKey, err := createMasterKey()
@@ -285,8 +301,8 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	fmt.Println(challengeSuccessResponse.Data.Message)
-	fmt.Println("Generating keypair...")
-	if _, _, err := generateKey(); err != nil {
+	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+	if err := generateKey(); err != nil {
 		return err
 	}
 	saveProfile(username, machineName, *serverUrl)
