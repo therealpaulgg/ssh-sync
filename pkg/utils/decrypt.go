@@ -6,6 +6,9 @@ import (
 	"crypto/cipher"
 	"crypto/mlkem"
 	"fmt"
+
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwe"
 )
 
 // DecryptMLKEM decrypts data that was encrypted with EncryptMLKEM.
@@ -49,13 +52,34 @@ func DecryptMLKEM(data []byte, dk *mlkem.DecapsulationKey768) ([]byte, error) {
 	return plaintext, nil
 }
 
-// Decrypt decrypts data using the local ML-KEM-768 decapsulation key.
+// Decrypt decrypts data using the local key. Auto-detects key format:
+//   - Legacy EC: JWE with ECDH-ES+A256KW
+//   - Post-quantum: ML-KEM-768 decapsulation + AES-256-GCM
 func Decrypt(b []byte) ([]byte, error) {
-	dk, err := RetrieveDecapsulationKey()
+	format, err := DetectKeyFormat()
 	if err != nil {
 		return nil, err
 	}
-	return DecryptMLKEM(b, dk)
+
+	switch format {
+	case FormatPostQuantum:
+		dk, err := RetrieveDecapsulationKey()
+		if err != nil {
+			return nil, err
+		}
+		return DecryptMLKEM(b, dk)
+
+	default: // FormatLegacyEC
+		key, err := RetrievePrivateKey()
+		if err != nil {
+			return nil, err
+		}
+		plaintext, err := jwe.Decrypt(b, jwe.WithKey(jwa.ECDH_ES_A256KW, key))
+		if err != nil {
+			return nil, err
+		}
+		return plaintext, nil
+	}
 }
 
 // DecryptWithMasterKey decrypts data using AES-256-GCM with the given master key.

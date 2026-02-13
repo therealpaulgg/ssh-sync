@@ -9,9 +9,46 @@ import (
 	"path/filepath"
 
 	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwe"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// RetrieveSigningPrivateKey loads the ML-DSA-65 private key from ~/.ssh-sync/keypair
+// --- Legacy EC key retrieval (ECDSA / ECDH-ES) ---
+
+// RetrievePrivateKey loads a legacy EC private key (JWK) from ~/.ssh-sync/keypair.
+func RetrievePrivateKey() (jwk.Key, error) {
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair")
+	file, err := os.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	key, err := jwk.ParseKey(file, jwk.WithPEM(true))
+	return key, err
+}
+
+// RetrievePublicKey loads a legacy EC public key (JWK) from ~/.ssh-sync/keypair.pub.
+func RetrievePublicKey() (jwk.Key, error) {
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
+	file, err := os.ReadFile(p)
+	if err != nil {
+		return nil, err
+	}
+	key, err := jwk.ParseKey(file, jwk.WithPEM(true))
+	return key, err
+}
+
+// --- Post-quantum key retrieval (ML-DSA-65 / ML-KEM-768) ---
+
+// RetrieveSigningPrivateKey loads the ML-DSA-65 private key from ~/.ssh-sync/keypair.
 func RetrieveSigningPrivateKey() (*mldsa65.PrivateKey, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -39,7 +76,7 @@ func RetrieveSigningPrivateKey() (*mldsa65.PrivateKey, error) {
 	return nil, fmt.Errorf("ML-DSA-65 private key not found in %s", p)
 }
 
-// RetrieveSigningPublicKey loads the ML-DSA-65 public key from ~/.ssh-sync/keypair.pub
+// RetrieveSigningPublicKey loads the ML-DSA-65 public key from ~/.ssh-sync/keypair.pub.
 func RetrieveSigningPublicKey() (*mldsa65.PublicKey, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -67,7 +104,7 @@ func RetrieveSigningPublicKey() (*mldsa65.PublicKey, error) {
 	return nil, fmt.Errorf("ML-DSA-65 public key not found in %s", p)
 }
 
-// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from ~/.ssh-sync/keypair
+// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from ~/.ssh-sync/keypair.
 func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -95,7 +132,7 @@ func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
 	return nil, fmt.Errorf("ML-KEM-768 decapsulation key not found in %s", p)
 }
 
-// RetrieveEncapsulationKey loads the ML-KEM-768 encapsulation key from ~/.ssh-sync/keypair.pub
+// RetrieveEncapsulationKey loads the ML-KEM-768 encapsulation key from ~/.ssh-sync/keypair.pub.
 func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -123,10 +160,18 @@ func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 	return nil, fmt.Errorf("ML-KEM-768 encapsulation key not found in %s", p)
 }
 
+// --- Format-aware master key retrieval ---
+
 // RetrieveMasterKey reads and decrypts the master key from ~/.ssh-sync/master_key.
-// The master key is protected using ML-KEM-768 key encapsulation + AES-256-GCM.
-// Format: [1088 bytes ML-KEM ciphertext][AES-GCM encrypted master key (nonce + ciphertext)]
+// It auto-detects the key format:
+//   - Legacy: JWE encrypted with ECDH-ES+A256KW
+//   - Post-quantum: ML-KEM-768 encapsulation + AES-256-GCM
 func RetrieveMasterKey() ([]byte, error) {
+	format, err := DetectKeyFormat()
+	if err != nil {
+		return nil, err
+	}
+
 	u, err := user.Current()
 	if err != nil {
 		return nil, err
@@ -136,13 +181,28 @@ func RetrieveMasterKey() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	dk, err := RetrieveDecapsulationKey()
-	if err != nil {
-		return nil, err
+
+	switch format {
+	case FormatPostQuantum:
+		dk, err := RetrieveDecapsulationKey()
+		if err != nil {
+			return nil, err
+		}
+		masterKey, err := DecryptMLKEM(file, dk)
+		if err != nil {
+			return nil, fmt.Errorf("decrypting master key (post-quantum): %w", err)
+		}
+		return masterKey, nil
+
+	default: // FormatLegacyEC
+		privateKey, err := RetrievePrivateKey()
+		if err != nil {
+			return nil, err
+		}
+		masterKey, err := jwe.Decrypt(file, jwe.WithKey(jwa.ECDH_ES_A256KW, privateKey))
+		if err != nil {
+			return nil, fmt.Errorf("decrypting master key (legacy EC): %w", err)
+		}
+		return masterKey, nil
 	}
-	masterKey, err := DecryptMLKEM(file, dk)
-	if err != nil {
-		return nil, fmt.Errorf("decrypting master key: %w", err)
-	}
-	return masterKey, nil
 }

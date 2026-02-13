@@ -7,6 +7,10 @@ import (
 	"crypto/rand"
 	"encoding/pem"
 	"fmt"
+
+	"github.com/lestrrat-go/jwx/v2/jwa"
+	"github.com/lestrrat-go/jwx/v2/jwe"
+	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
 // EncryptWithMasterKey encrypts data using AES-256-GCM with the given master key.
@@ -29,16 +33,34 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 	return outBuf, nil
 }
 
-// Encrypt encrypts data using the local ML-KEM-768 encapsulation key.
-// Uses ML-KEM-768 key encapsulation to derive a shared secret, then
-// encrypts with AES-256-GCM.
-// Output format: [1088 bytes ML-KEM ciphertext][12 bytes nonce][AES-GCM ciphertext + tag]
+// Encrypt encrypts data using the local key. Auto-detects key format:
+//   - Legacy EC: JWE with ECDH-ES+A256KW
+//   - Post-quantum: ML-KEM-768 encapsulation + AES-256-GCM
 func Encrypt(b []byte) ([]byte, error) {
-	ek, err := RetrieveEncapsulationKey()
+	format, err := DetectKeyFormat()
 	if err != nil {
 		return nil, err
 	}
-	return EncryptMLKEM(b, ek)
+
+	switch format {
+	case FormatPostQuantum:
+		ek, err := RetrieveEncapsulationKey()
+		if err != nil {
+			return nil, err
+		}
+		return EncryptMLKEM(b, ek)
+
+	default: // FormatLegacyEC
+		key, err := RetrievePublicKey()
+		if err != nil {
+			return nil, err
+		}
+		ciphertext, err := jwe.Encrypt(b, jwe.WithKey(jwa.ECDH_ES_A256KW, key))
+		if err != nil {
+			return nil, err
+		}
+		return ciphertext, nil
+	}
 }
 
 // EncryptMLKEM encrypts data using an ML-KEM-768 encapsulation key.
@@ -70,20 +92,37 @@ func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, erro
 	return result, nil
 }
 
-// EncryptWithPublicKey encrypts data using a PEM-encoded ML-KEM-768 encapsulation key.
-// Used during challenge-response to encrypt master key with the server's public key.
+// EncryptWithPublicKey encrypts data using a public key received from the server.
+// Auto-detects the key format from the PEM block type:
+//   - Legacy EC: PEM "PUBLIC KEY" → JWE with ECDH-ES+A256KW
+//   - Post-quantum: PEM "MLKEM768 ENCAPSULATION KEY" → ML-KEM-768 + AES-GCM
 func EncryptWithPublicKey(b []byte, key []byte) ([]byte, error) {
-	// Parse the PEM-encoded encapsulation key
-	block, _ := pem.Decode(key)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block for encapsulation key")
+	format := DetectPEMKeyFormat(key)
+
+	switch format {
+	case FormatPostQuantum:
+		block, _ := pem.Decode(key)
+		if block == nil {
+			return nil, fmt.Errorf("failed to decode PEM block for encapsulation key")
+		}
+		if block.Type != "MLKEM768 ENCAPSULATION KEY" {
+			return nil, fmt.Errorf("unexpected PEM block type: %s", block.Type)
+		}
+		ek, err := mlkem.NewEncapsulationKey768(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("parsing ML-KEM-768 encapsulation key: %w", err)
+		}
+		return EncryptMLKEM(b, ek)
+
+	default: // FormatLegacyEC
+		pubKey, err := jwk.ParseKey(key, jwk.WithPEM(true))
+		if err != nil {
+			return nil, err
+		}
+		ciphertext, err := jwe.Encrypt(b, jwe.WithKey(jwa.ECDH_ES_A256KW, pubKey))
+		if err != nil {
+			return nil, err
+		}
+		return ciphertext, nil
 	}
-	if block.Type != "MLKEM768 ENCAPSULATION KEY" {
-		return nil, fmt.Errorf("unexpected PEM block type: %s", block.Type)
-	}
-	ek, err := mlkem.NewEncapsulationKey768(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("parsing ML-KEM-768 encapsulation key: %w", err)
-	}
-	return EncryptMLKEM(b, ek)
 }
