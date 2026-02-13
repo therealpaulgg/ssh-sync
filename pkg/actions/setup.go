@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -71,6 +74,54 @@ func generateKey() error {
 	}
 	defer pubOut.Close()
 	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// generateKeyClassic generates a classical ECDSA P-256 keypair.
+// This is the original key generation used before post-quantum support.
+func generateKeyClassic() error {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return fmt.Errorf("generating ECDSA key: %w", err)
+	}
+	pub := &priv.PublicKey
+
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(u.HomeDir, ".ssh-sync")
+	if err := os.MkdirAll(p, 0700); err != nil {
+		return err
+	}
+
+	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		return err
+	}
+	privBytes, err := x509.MarshalECPrivateKey(priv)
+	if err != nil {
+		return err
+	}
+
+	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer pubOut.Close()
+	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
+		return err
+	}
+
+	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer privOut.Close()
+	if err := pem.Encode(privOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
 		return err
 	}
 
@@ -170,7 +221,7 @@ func createMasterKey() ([]byte, error) {
 	return masterKey, nil
 }
 
-func newAccountSetup(serverUrl *url.URL) error {
+func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	// ask user to pick a username.
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
@@ -193,9 +244,16 @@ func newAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	// then the program will generate a keypair, and upload the public key to the server
-	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
-	if err := generateKey(); err != nil {
-		return err
+	if classic {
+		fmt.Println("Generating classical keypair (ECDSA P-256)...")
+		if err := generateKeyClassic(); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+		if err := generateKey(); err != nil {
+			return err
+		}
 	}
 	masterKey, err := createMasterKey()
 	if err != nil {
@@ -241,7 +299,7 @@ func newAccountSetup(serverUrl *url.URL) error {
 	return nil
 }
 
-func existingAccountSetup(serverUrl *url.URL) error {
+func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
@@ -291,17 +349,37 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	fmt.Println(challengeSuccessResponse.Data.Message)
-	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
-	if err := generateKey(); err != nil {
-		return err
+	if classic {
+		fmt.Println("Generating classical keypair (ECDSA P-256)...")
+		if err := generateKeyClassic(); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+		if err := generateKey(); err != nil {
+			return err
+		}
 	}
 	saveProfile(username, machineName, *serverUrl)
-	// Build the PublicKeyDto with both ML-DSA + ML-KEM public keys.
-	// The server stores only ML-DSA for JWT verification, but relays the full
-	// payload to Machine A so it can encrypt the master key with ML-KEM.
-	pubkeyPayload, err := utils.BuildFullPublicKeyPEM()
-	if err != nil {
-		return err
+	// Send public key to server via WebSocket.
+	// For PQ: send both ML-DSA + ML-KEM (server stores ML-DSA, relays both to Machine A).
+	// For classic: send the EC public key file directly.
+	var pubkeyPayload []byte
+	if classic {
+		f, err := getPubkeyFile()
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		pubkeyPayload, err = io.ReadAll(f)
+		if err != nil {
+			return err
+		}
+	} else {
+		pubkeyPayload, err = utils.BuildFullPublicKeyPEM()
+		if err != nil {
+			return err
+		}
 	}
 	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkeyPayload}); err != nil {
 		return err
@@ -380,8 +458,9 @@ func Setup(c *cli.Context) error {
 	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
+	classic := c.Bool("classic")
 	if answer == "y" {
-		return existingAccountSetup(serverUrl)
+		return existingAccountSetup(serverUrl, classic)
 	}
-	return newAccountSetup(serverUrl)
+	return newAccountSetup(serverUrl, classic)
 }
