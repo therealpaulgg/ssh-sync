@@ -153,30 +153,31 @@ func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 	return dk.EncapsulationKey(), nil
 }
 
-// BuildFullPublicKeyPEM returns PEM-encoded bytes containing both ML-DSA-65
-// and ML-KEM-768 public keys. This is used for the WebSocket PublicKeyDto
-// during existing account setup — the server relays both keys to Machine A
-// (which needs ML-KEM to encrypt the master key), but only stores ML-DSA.
-func BuildFullPublicKeyPEM() ([]byte, error) {
+// BuildPQPublicKeys returns the ML-DSA-65 signing public key and ML-KEM-768
+// encapsulation key as separate PEM-encoded byte slices. The caller sends them
+// in distinct DTO fields so the server can store the signing key and relay
+// the encapsulation key independently.
+func BuildPQPublicKeys() (sigPEM []byte, ekPEM []byte, err error) {
 	seed, err := retrieveMasterSeed()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if seed == nil {
-		return nil, fmt.Errorf("PQ master seed not found in keypair file")
+		return nil, nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
 	sigPub, _, dk, err := DerivePQKeys(seed)
 	if err != nil {
-		return nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
+		return nil, nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
 	}
-	var buf bytes.Buffer
-	if err := pem.Encode(&buf, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
-		return nil, err
+	var sigBuf bytes.Buffer
+	if err := pem.Encode(&sigBuf, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
+		return nil, nil, err
 	}
-	if err := pem.Encode(&buf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
-		return nil, err
+	var ekBuf bytes.Buffer
+	if err := pem.Encode(&ekBuf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
+		return nil, nil, err
 	}
-	return buf.Bytes(), nil
+	return sigBuf.Bytes(), ekBuf.Bytes(), nil
 }
 
 // --- Format-aware master key retrieval ---

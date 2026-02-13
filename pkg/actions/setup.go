@@ -358,27 +358,30 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 		}
 	}
 	saveProfile(username, machineName, *serverUrl)
-	// Send public key to server via WebSocket.
-	// For PQ: send both ML-DSA + ML-KEM (server stores ML-DSA, relays both to Machine A).
-	// For classic: send the EC public key file directly.
-	var pubkeyPayload []byte
+	// Send public key(s) to server via WebSocket.
+	// PublicKey is always the signing/identity key (EC or ML-DSA).
+	// EncapsulationKey is only set for PQ — server relays it to Machine A for key exchange.
+	var pubKeyMsg dto.PublicKeyDto
 	if classic {
 		f, err := getPubkeyFile()
 		if err != nil {
 			return err
 		}
 		defer f.Close()
-		pubkeyPayload, err = io.ReadAll(f)
+		pubkeyPayload, err := io.ReadAll(f)
 		if err != nil {
 			return err
 		}
+		pubKeyMsg.PublicKey = pubkeyPayload
 	} else {
-		pubkeyPayload, err = utils.BuildFullPublicKeyPEM()
+		sigPub, ekPEM, err := utils.BuildPQPublicKeys()
 		if err != nil {
 			return err
 		}
+		pubKeyMsg.PublicKey = sigPub
+		pubKeyMsg.EncapsulationKey = ekPEM
 	}
-	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkeyPayload}); err != nil {
+	if err := utils.WriteClientMessage(&conn, pubKeyMsg); err != nil {
 		return err
 	}
 	encryptedMasterKey, err := utils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)

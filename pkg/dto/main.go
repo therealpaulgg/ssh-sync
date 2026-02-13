@@ -51,7 +51,8 @@ type ChallengeResponseDto struct {
 }
 
 type ChallengeSuccessEncryptedKeyDto struct {
-	PublicKey []byte `json:"public_key"`
+	PublicKey        []byte `json:"public_key"`
+	EncapsulationKey []byte `json:"encapsulation_key,omitempty"`
 }
 
 type MessageDto struct {
@@ -67,7 +68,8 @@ type MasterKeyDto struct {
 }
 
 type PublicKeyDto struct {
-	PublicKey []byte `json:"public_key"`
+	PublicKey        []byte `json:"public_key"`
+	EncapsulationKey []byte `json:"encapsulation_key,omitempty"`
 }
 
 type ServerMessageDto[T Dto] struct {

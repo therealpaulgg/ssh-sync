@@ -92,37 +92,31 @@ func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, erro
 	return result, nil
 }
 
-// EncryptWithPublicKey encrypts data using a public key received from the server.
-// Auto-detects the key format from the PEM block type:
-//   - Legacy EC: PEM "PUBLIC KEY" → JWE with ECDH-ES+A256KW
-//   - Post-quantum: PEM "MLKEM768 ENCAPSULATION KEY" → ML-KEM-768 + AES-GCM
-func EncryptWithPublicKey(b []byte, key []byte) ([]byte, error) {
-	format := DetectPEMKeyFormat(key)
-
-	switch format {
-	case FormatPostQuantum:
-		block, _ := pem.Decode(key)
-		if block == nil {
-			return nil, fmt.Errorf("failed to decode PEM block for encapsulation key")
-		}
-		if block.Type != "MLKEM768 ENCAPSULATION KEY" {
-			return nil, fmt.Errorf("unexpected PEM block type: %s", block.Type)
-		}
-		ek, err := mlkem.NewEncapsulationKey768(block.Bytes)
-		if err != nil {
-			return nil, fmt.Errorf("parsing ML-KEM-768 encapsulation key: %w", err)
-		}
-		return EncryptMLKEM(b, ek)
-
-	default: // FormatLegacyEC
-		pubKey, err := jwk.ParseKey(key, jwk.WithPEM(true))
-		if err != nil {
-			return nil, err
-		}
-		ciphertext, err := jwe.Encrypt(b, jwe.WithKey(jwa.ECDH_ES_A256KW, pubKey))
-		if err != nil {
-			return nil, err
-		}
-		return ciphertext, nil
+// EncryptWithPQPublicKey encrypts data using a PEM-encoded ML-KEM-768 encapsulation key.
+func EncryptWithPQPublicKey(b []byte, ekPEM []byte) ([]byte, error) {
+	block, _ := pem.Decode(ekPEM)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block for encapsulation key")
 	}
+	if block.Type != "MLKEM768 ENCAPSULATION KEY" {
+		return nil, fmt.Errorf("unexpected PEM block type: %s", block.Type)
+	}
+	ek, err := mlkem.NewEncapsulationKey768(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parsing ML-KEM-768 encapsulation key: %w", err)
+	}
+	return EncryptMLKEM(b, ek)
+}
+
+// EncryptWithECPublicKey encrypts data using a PEM-encoded EC public key via JWE.
+func EncryptWithECPublicKey(b []byte, key []byte) ([]byte, error) {
+	pubKey, err := jwk.ParseKey(key, jwk.WithPEM(true))
+	if err != nil {
+		return nil, err
+	}
+	ciphertext, err := jwe.Encrypt(b, jwe.WithKey(jwa.ECDH_ES_A256KW, pubKey))
+	if err != nil {
+		return nil, err
+	}
+	return ciphertext, nil
 }
