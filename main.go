@@ -64,6 +64,11 @@ func main() {
 				Action: actions.Reset,
 			},
 			{
+				Name:        "migrate",
+				Description: "Migrate keys from classical ECDSA to post-quantum (ML-DSA-65 + ML-KEM-768)",
+				Action:      actions.Migrate,
+			},
+			{
 				Name:        "interactive",
 				Description: "Uses a TUI mode for interacting with keys and config",
 				Usage:       "Interactively manage your ssh keys with a TUI",
