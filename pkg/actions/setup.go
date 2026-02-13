@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/mlkem"
 	"crypto/rand"
 	"encoding/json"
 	"encoding/pem"
@@ -19,7 +18,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/gobwas/ws"
 	"github.com/therealpaulgg/ssh-sync/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
@@ -27,10 +25,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// generateKey generates post-quantum keypairs:
-// - ML-DSA-65 for digital signatures (JWT signing)
-// - ML-KEM-768 for key encapsulation (master key encryption)
-// Keys are stored as PEM-encoded files in ~/.ssh-sync/
+// generateKey generates a single PQ master seed from which both post-quantum
+// keypairs are deterministically derived via HKDF:
+//   - ML-DSA-65 for digital signatures (JWT signing)
+//   - ML-KEM-768 for key encapsulation (master key encryption)
+//
+// Private key file (keypair): single PEM block "SSHSYNC PQ MASTER SEED" (64 bytes)
+// Public key file (keypair.pub): ML-DSA-65 public key only (server needs only this)
 func generateKey() error {
 	u, err := user.Current()
 	if err != nil {
@@ -41,46 +42,35 @@ func generateKey() error {
 		return err
 	}
 
-	// Generate ML-DSA-65 signing keypair
-	sigPub, sigPriv, err := mldsa65.GenerateKey(rand.Reader)
-	if err != nil {
-		return fmt.Errorf("generating ML-DSA-65 key: %w", err)
-	}
-	sigPubBytes := sigPub.Bytes()
-	sigPrivBytes := sigPriv.Bytes()
-
-	// Generate ML-KEM-768 key encapsulation keypair
-	kemDK, err := mlkem.GenerateKey768()
-	if err != nil {
-		return fmt.Errorf("generating ML-KEM-768 key: %w", err)
-	}
-	kemEK := kemDK.EncapsulationKey()
-	kemDKSeed := kemDK.Bytes()   // 64-byte seed
-	kemEKBytes := kemEK.Bytes()  // 1184-byte encapsulation key
-
-	// Write public key file (signing + encapsulation keys)
-	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer pubOut.Close()
-	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPubBytes}); err != nil {
-		return err
-	}
-	if err := pem.Encode(pubOut, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: kemEKBytes}); err != nil {
-		return err
+	// Generate random master seed
+	masterSeed := make([]byte, utils.MasterSeedSize)
+	if _, err := rand.Read(masterSeed); err != nil {
+		return fmt.Errorf("generating master seed: %w", err)
 	}
 
-	// Write private key file (signing + decapsulation keys)
+	// Derive both keypairs from the seed
+	sigPub, _, _, err := utils.DerivePQKeys(masterSeed)
+	if err != nil {
+		return fmt.Errorf("deriving PQ keys: %w", err)
+	}
+
+	// Write private key file: single PEM block with the master seed
 	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer privOut.Close()
-	if err := pem.Encode(privOut, &pem.Block{Type: "MLDSA65 PRIVATE KEY", Bytes: sigPrivBytes}); err != nil {
+	if err := pem.Encode(privOut, &pem.Block{Type: "SSHSYNC PQ MASTER SEED", Bytes: masterSeed}); err != nil {
 		return err
 	}
-	if err := pem.Encode(privOut, &pem.Block{Type: "MLKEM768 DECAPSULATION KEY SEED", Bytes: kemDKSeed}); err != nil {
+
+	// Write public key file: ML-DSA-65 public key only (server needs only this for JWT verification)
+	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer pubOut.Close()
+	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
 		return err
 	}
 
@@ -306,16 +296,14 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	saveProfile(username, machineName, *serverUrl)
-	f, err := getPubkeyFile()
+	// Build the PublicKeyDto with both ML-DSA + ML-KEM public keys.
+	// The server stores only ML-DSA for JWT verification, but relays the full
+	// payload to Machine A so it can encrypt the master key with ML-KEM.
+	pubkeyPayload, err := utils.BuildFullPublicKeyPEM()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	pubkey, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkey}); err != nil {
+	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkeyPayload}); err != nil {
 		return err
 	}
 	encryptedMasterKey, err := utils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)
