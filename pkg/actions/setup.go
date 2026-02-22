@@ -22,7 +22,8 @@ import (
 	"strconv"
 
 	"github.com/gobwas/ws"
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/wsutils"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
@@ -333,15 +334,15 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 		Username:    username,
 		MachineName: machineName,
 	}
-	if err := utils.WriteClientMessage(&conn, userMachine); err != nil {
+	if err := wsutils.WriteClientMessage(&conn, userMachine); err != nil {
 		return err
 	}
-	challengePhrase, err := utils.ReadServerMessage[dto.MessageDto](&conn)
+	challengePhrase, err := wsutils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Please enter this phrase using the 'challenge-response' command on another machine: %s\n", challengePhrase.Data.Message)
-	challengeSuccessResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)
+	challengeSuccessResponse, err := wsutils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
@@ -381,17 +382,17 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 		pubKeyMsg.PublicKey = sigPub
 		pubKeyMsg.EncapsulationKey = ekPEM
 	}
-	if err := utils.WriteClientMessage(&conn, pubKeyMsg); err != nil {
+	if err := wsutils.WriteClientMessage(&conn, pubKeyMsg); err != nil {
 		return err
 	}
-	encryptedMasterKey, err := utils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)
+	encryptedMasterKey, err := wsutils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)
 	if err != nil {
 		return err
 	}
 	if err := saveMasterKey(encryptedMasterKey.Data.EncryptedMasterKey); err != nil {
 		return err
 	}
-	finalResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)
+	finalResponse, err := wsutils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}

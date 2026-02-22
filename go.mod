@@ -1,19 +1,18 @@
 module github.com/therealpaulgg/ssh-sync
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v0.13.1
 	github.com/cloudflare/circl v1.6.1
-	github.com/gobwas/ws v1.1.0
-	github.com/google/uuid v1.3.0
+	github.com/gobwas/ws v1.4.0
+	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/samber/lo v1.37.0
 	github.com/stretchr/testify v1.9.0
+	github.com/therealpaulgg/ssh-sync-common v0.0.1
 	github.com/urfave/cli/v2 v2.23.7
 	golang.org/x/crypto v0.21.0
 )

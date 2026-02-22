@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )

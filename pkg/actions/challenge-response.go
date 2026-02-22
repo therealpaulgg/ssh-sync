@@ -8,7 +8,8 @@ import (
 	"os"
 
 	"github.com/gobwas/ws"
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/wsutils"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -54,12 +55,12 @@ func ChallengeResponse(c *cli.Context) error {
 			return err
 		}
 	}
-	if err := utils.WriteClientMessage(&conn, dto.ChallengeResponseDto{
+	if err := wsutils.WriteClientMessage(&conn, dto.ChallengeResponseDto{
 		Challenge: answer,
 	}); err != nil {
 		return err
 	}
-	response, err := utils.ReadServerMessage[dto.ChallengeSuccessEncryptedKeyDto](&conn)
+	response, err := wsutils.ReadServerMessage[dto.ChallengeSuccessEncryptedKeyDto](&conn)
 	if err != nil {
 		return err
 	}
@@ -78,7 +79,7 @@ func ChallengeResponse(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := utils.WriteClientMessage(&conn, dto.EncryptedMasterKeyDto{EncryptedMasterKey: encryptedMasterKey}); err != nil {
+	if err := wsutils.WriteClientMessage(&conn, dto.EncryptedMasterKeyDto{EncryptedMasterKey: encryptedMasterKey}); err != nil {
 		return err
 	}
 	fmt.Println("Challenge has been successfully completed and your new encrypted master key has been sent to server. You may now use ssh-sync on your new machine.")
