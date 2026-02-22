@@ -3,14 +3,26 @@ package utils
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdh"
 	"crypto/mlkem"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"io"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/lestrrat-go/jwx/v2/jwk"
+	"golang.org/x/crypto/hkdf"
+)
+
+// Hybrid KEM ciphertext layout sizes.
+const (
+	ecdhPubKeySize  = 65   // uncompressed P-256 point (0x04 || x || y)
+	mlkemCtSize     = 1088 // ML-KEM-768 ciphertext size
+	hybridHeaderLen = ecdhPubKeySize + mlkemCtSize
 )
 
 // EncryptWithMasterKey encrypts data using AES-256-GCM with the given master key.
@@ -35,7 +47,7 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 
 // Encrypt encrypts data using the local key. Auto-detects key format:
 //   - Legacy EC: JWE with ECDH-ES+A256KW
-//   - Post-quantum: ML-KEM-768 encapsulation + AES-256-GCM
+//   - Hybrid: ECDH P-256 + ML-KEM-768 + AES-256-GCM
 func Encrypt(b []byte) ([]byte, error) {
 	format, err := DetectKeyFormat()
 	if err != nil {
@@ -43,12 +55,16 @@ func Encrypt(b []byte) ([]byte, error) {
 	}
 
 	switch format {
-	case FormatPostQuantum:
+	case FormatHybrid:
+		ecPriv, err := RetrieveHybridECKey()
+		if err != nil {
+			return nil, err
+		}
 		ek, err := RetrieveEncapsulationKey()
 		if err != nil {
 			return nil, err
 		}
-		return EncryptMLKEM(b, ek)
+		return EncryptHybrid(b, ecPriv.PublicKey(), ek)
 
 	default: // FormatLegacyEC
 		key, err := RetrievePublicKey()
@@ -63,14 +79,34 @@ func Encrypt(b []byte) ([]byte, error) {
 	}
 }
 
-// EncryptMLKEM encrypts data using an ML-KEM-768 encapsulation key.
-// Output format: [1088 bytes ML-KEM ciphertext][12 bytes nonce][AES-GCM ciphertext + tag]
-func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, error) {
-	// Encapsulate to produce shared secret and ciphertext
-	sharedKey, kemCiphertext := ek.Encapsulate()
+// EncryptHybrid encrypts data using a hybrid ECDH P-256 + ML-KEM-768 KEM.
+// Output format: [65 bytes eph EC pub][1088 bytes ML-KEM ct][12 bytes nonce][AES-GCM ct+tag]
+func EncryptHybrid(plaintext []byte, ecPub *ecdh.PublicKey, ek *mlkem.EncapsulationKey768) ([]byte, error) {
+	// 1. Generate ephemeral EC P-256 keypair and perform ECDH
+	ephPriv, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generating ephemeral EC key: %w", err)
+	}
+	sharedEC, err := ephPriv.ECDH(ecPub)
+	if err != nil {
+		return nil, fmt.Errorf("ECDH key agreement: %w", err)
+	}
 
-	// Use shared secret as AES-256 key
-	blockCipher, err := aes.NewCipher(sharedKey)
+	// 2. ML-KEM-768 encapsulation
+	sharedKEM, kemCiphertext := ek.Encapsulate()
+
+	// 3. Combine shared secrets via HKDF
+	combined := make([]byte, 0, len(sharedEC)+len(sharedKEM))
+	combined = append(combined, sharedEC...)
+	combined = append(combined, sharedKEM...)
+	hkdfReader := hkdf.New(sha256.New, combined, nil, []byte("ssh-sync-hybrid-v1"))
+	aesKey := make([]byte, 32)
+	if _, err := io.ReadFull(hkdfReader, aesKey); err != nil {
+		return nil, fmt.Errorf("deriving AES key: %w", err)
+	}
+
+	// 4. AES-256-GCM encrypt
+	blockCipher, err := aes.NewCipher(aesKey)
 	if err != nil {
 		return nil, fmt.Errorf("creating AES cipher: %w", err)
 	}
@@ -84,28 +120,47 @@ func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, erro
 	}
 	aesCiphertext := gcm.Seal(nil, nonce, plaintext, nil)
 
-	// Output: [KEM ciphertext][nonce][AES-GCM ciphertext]
-	result := make([]byte, 0, len(kemCiphertext)+len(nonce)+len(aesCiphertext))
+	// 5. Assemble output: [eph EC pub][ML-KEM ct][nonce][AES-GCM ct]
+	ephPubBytes := ephPriv.PublicKey().Bytes()
+	result := make([]byte, 0, len(ephPubBytes)+len(kemCiphertext)+len(nonce)+len(aesCiphertext))
+	result = append(result, ephPubBytes...)
 	result = append(result, kemCiphertext...)
 	result = append(result, nonce...)
 	result = append(result, aesCiphertext...)
 	return result, nil
 }
 
-// EncryptWithPQPublicKey encrypts data using a PEM-encoded ML-KEM-768 encapsulation key.
-func EncryptWithPQPublicKey(b []byte, ekPEM []byte) ([]byte, error) {
-	block, _ := pem.Decode(ekPEM)
-	if block == nil {
+// EncryptWithHybridPublicKey encrypts data using PEM-encoded EC + ML-KEM public keys.
+// Used during challenge-response when Machine A encrypts the master key for Machine B.
+func EncryptWithHybridPublicKey(b []byte, ecPubPEM []byte, ekPEM []byte) ([]byte, error) {
+	// Parse EC public key
+	ecBlock, _ := pem.Decode(ecPubPEM)
+	if ecBlock == nil {
+		return nil, fmt.Errorf("failed to decode PEM block for EC public key")
+	}
+	genericKey, err := x509.ParsePKIXPublicKey(ecBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parsing EC public key: %w", err)
+	}
+	ecdhPub, ok := genericKey.(*ecdh.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("expected *ecdh.PublicKey, got %T", genericKey)
+	}
+
+	// Parse ML-KEM encapsulation key
+	ekBlock, _ := pem.Decode(ekPEM)
+	if ekBlock == nil {
 		return nil, fmt.Errorf("failed to decode PEM block for encapsulation key")
 	}
-	if block.Type != "MLKEM768 ENCAPSULATION KEY" {
-		return nil, fmt.Errorf("unexpected PEM block type: %s", block.Type)
+	if ekBlock.Type != "MLKEM768 ENCAPSULATION KEY" {
+		return nil, fmt.Errorf("unexpected PEM block type: %s", ekBlock.Type)
 	}
-	ek, err := mlkem.NewEncapsulationKey768(block.Bytes)
+	ek, err := mlkem.NewEncapsulationKey768(ekBlock.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("parsing ML-KEM-768 encapsulation key: %w", err)
 	}
-	return EncryptMLKEM(b, ek)
+
+	return EncryptHybrid(b, ecdhPub, ek)
 }
 
 // EncryptWithECPublicKey encrypts data using a PEM-encoded EC public key via JWE.

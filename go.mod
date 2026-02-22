@@ -2,11 +2,12 @@ module github.com/therealpaulgg/ssh-sync
 
 go 1.25.0
 
+toolchain go1.25.1
+
 require (
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v0.13.1
-	github.com/cloudflare/circl v1.6.1
 	github.com/gobwas/ws v1.4.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21

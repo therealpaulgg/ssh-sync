@@ -13,14 +13,14 @@ type KeyFormat int
 const (
 	// FormatLegacyEC indicates keys use classical ECDSA P-256 / ECDH-ES.
 	FormatLegacyEC KeyFormat = iota
-	// FormatPostQuantum indicates keys use ML-DSA-65 / ML-KEM-768.
-	FormatPostQuantum
+	// FormatHybrid indicates keys use ECDH P-256 + ML-KEM-768 hybrid KEM.
+	FormatHybrid
 )
 
 // DetectKeyFormat reads the private key file and determines the key format
 // based on PEM block types.
 //   - "EC PRIVATE KEY" → FormatLegacyEC
-//   - "MLDSA65 PRIVATE KEY" → FormatPostQuantum
+//   - "SSHSYNC HYBRID SEED" → FormatHybrid
 func DetectKeyFormat() (KeyFormat, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -42,8 +42,8 @@ func detectKeyFormatFromBytes(data []byte) KeyFormat {
 			break
 		}
 		switch block.Type {
-		case "SSHSYNC PQ MASTER SEED":
-			return FormatPostQuantum
+		case "SSHSYNC HYBRID SEED":
+			return FormatHybrid
 		case "EC PRIVATE KEY":
 			return FormatLegacyEC
 		}
@@ -51,4 +51,3 @@ func detectKeyFormatFromBytes(data []byte) KeyFormat {
 	// Default to legacy if unrecognized (shouldn't happen with valid files)
 	return FormatLegacyEC
 }
-

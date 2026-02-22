@@ -2,14 +2,15 @@ package utils
 
 import (
 	"bytes"
+	"crypto/ecdh"
 	"crypto/mlkem"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
 
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/lestrrat-go/jwx/v2/jwk"
@@ -47,11 +48,11 @@ func RetrievePublicKey() (jwk.Key, error) {
 	return key, err
 }
 
-// --- Post-quantum key retrieval (ML-DSA-65 / ML-KEM-768) ---
+// --- Hybrid key retrieval (ECDH P-256 + ML-KEM-768) ---
 
-// retrieveMasterSeed reads the PQ master seed from ~/.ssh-sync/keypair.
-// Returns nil if the keypair file doesn't contain a master seed PEM block.
-func retrieveMasterSeed() ([]byte, error) {
+// retrieveHybridSeed reads the hybrid master seed from ~/.ssh-sync/keypair.
+// Returns nil if the keypair file doesn't contain a hybrid seed PEM block.
+func retrieveHybridSeed() ([]byte, error) {
 	u, err := user.Current()
 	if err != nil {
 		return nil, err
@@ -67,117 +68,87 @@ func retrieveMasterSeed() ([]byte, error) {
 		if block == nil {
 			break
 		}
-		if block.Type == "SSHSYNC PQ MASTER SEED" {
+		if block.Type == "SSHSYNC HYBRID SEED" {
 			return block.Bytes, nil
 		}
 	}
 	return nil, nil
 }
 
-// RetrieveSigningPrivateKey loads the ML-DSA-65 private key from ~/.ssh-sync/keypair
-// by deriving it from the PQ master seed via HKDF.
-func RetrieveSigningPrivateKey() (*mldsa65.PrivateKey, error) {
-	seed, err := retrieveMasterSeed()
+// RetrieveHybridECKey loads the EC P-256 ECDH private key from the hybrid seed.
+func RetrieveHybridECKey() (*ecdh.PrivateKey, error) {
+	seed, err := retrieveHybridSeed()
 	if err != nil {
 		return nil, err
 	}
 	if seed == nil {
-		return nil, fmt.Errorf("PQ master seed not found in keypair file")
+		return nil, fmt.Errorf("hybrid seed not found in keypair file")
 	}
-	_, sk, _, err := DerivePQKeys(seed)
+	ecPriv, _, err := DeriveHybridKeys(seed)
 	if err != nil {
-		return nil, fmt.Errorf("deriving signing key from master seed: %w", err)
+		return nil, fmt.Errorf("deriving EC key from hybrid seed: %w", err)
 	}
-	return sk, nil
+	return ecPriv, nil
 }
 
-// RetrieveSigningPublicKey loads the ML-DSA-65 public key from ~/.ssh-sync/keypair.pub.
-func RetrieveSigningPublicKey() (*mldsa65.PublicKey, error) {
-	u, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return nil, err
-	}
-	for {
-		var block *pem.Block
-		block, data = pem.Decode(data)
-		if block == nil {
-			break
-		}
-		if block.Type == "MLDSA65 PUBLIC KEY" {
-			var pk mldsa65.PublicKey
-			if err := pk.UnmarshalBinary(block.Bytes); err != nil {
-				return nil, fmt.Errorf("unmarshaling ML-DSA-65 public key: %w", err)
-			}
-			return &pk, nil
-		}
-	}
-	return nil, fmt.Errorf("ML-DSA-65 public key not found in %s", p)
-}
-
-// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from ~/.ssh-sync/keypair
-// by deriving it from the PQ master seed via HKDF.
+// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from the hybrid seed.
 func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
-	seed, err := retrieveMasterSeed()
+	seed, err := retrieveHybridSeed()
 	if err != nil {
 		return nil, err
 	}
 	if seed == nil {
-		return nil, fmt.Errorf("PQ master seed not found in keypair file")
+		return nil, fmt.Errorf("hybrid seed not found in keypair file")
 	}
-	_, _, dk, err := DerivePQKeys(seed)
+	_, dk, err := DeriveHybridKeys(seed)
 	if err != nil {
-		return nil, fmt.Errorf("deriving decapsulation key from master seed: %w", err)
+		return nil, fmt.Errorf("deriving decapsulation key from hybrid seed: %w", err)
 	}
 	return dk, nil
 }
 
-// RetrieveEncapsulationKey derives the ML-KEM-768 encapsulation key from the local keypair
-// by deriving it from the PQ master seed via HKDF.
+// RetrieveEncapsulationKey derives the ML-KEM-768 encapsulation key from the hybrid seed.
 func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
-	seed, err := retrieveMasterSeed()
+	dk, err := RetrieveDecapsulationKey()
 	if err != nil {
 		return nil, err
-	}
-	if seed == nil {
-		return nil, fmt.Errorf("PQ master seed not found in keypair file")
-	}
-	_, _, dk, err := DerivePQKeys(seed)
-	if err != nil {
-		return nil, fmt.Errorf("deriving encapsulation key from master seed: %w", err)
 	}
 	return dk.EncapsulationKey(), nil
 }
 
-// BuildPQPublicKeys returns the ML-DSA-65 signing public key and ML-KEM-768
+// BuildHybridPublicKeys returns the EC P-256 public key and ML-KEM-768
 // encapsulation key as separate PEM-encoded byte slices. The caller sends them
-// in distinct DTO fields so the server can store the signing key and relay
-// the encapsulation key independently.
-func BuildPQPublicKeys() (sigPEM []byte, ekPEM []byte, err error) {
-	seed, err := retrieveMasterSeed()
+// in distinct DTO fields so the server can store the EC key (for JWT auth)
+// and relay the encapsulation key independently (for hybrid KEM).
+func BuildHybridPublicKeys() (ecPubPEM []byte, ekPEM []byte, err error) {
+	seed, err := retrieveHybridSeed()
 	if err != nil {
 		return nil, nil, err
 	}
 	if seed == nil {
-		return nil, nil, fmt.Errorf("PQ master seed not found in keypair file")
+		return nil, nil, fmt.Errorf("hybrid seed not found in keypair file")
 	}
-	sigPub, _, dk, err := DerivePQKeys(seed)
+	ecPriv, dk, err := DeriveHybridKeys(seed)
 	if err != nil {
 		return nil, nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
 	}
-	var sigBuf bytes.Buffer
-	if err := pem.Encode(&sigBuf, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sigPub.Bytes()}); err != nil {
+
+	// EC public key as PKIX "PUBLIC KEY" PEM
+	ecPubBytes, err := x509.MarshalPKIXPublicKey(ecPriv.Public().(*ecdh.PublicKey))
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshaling EC public key: %w", err)
+	}
+	var ecBuf bytes.Buffer
+	if err := pem.Encode(&ecBuf, &pem.Block{Type: "PUBLIC KEY", Bytes: ecPubBytes}); err != nil {
 		return nil, nil, err
 	}
+
+	// ML-KEM encapsulation key PEM
 	var ekBuf bytes.Buffer
 	if err := pem.Encode(&ekBuf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
 		return nil, nil, err
 	}
-	return sigBuf.Bytes(), ekBuf.Bytes(), nil
+	return ecBuf.Bytes(), ekBuf.Bytes(), nil
 }
 
 // --- Format-aware master key retrieval ---
@@ -185,7 +156,7 @@ func BuildPQPublicKeys() (sigPEM []byte, ekPEM []byte, err error) {
 // RetrieveMasterKey reads and decrypts the master key from ~/.ssh-sync/master_key.
 // It auto-detects the key format:
 //   - Legacy: JWE encrypted with ECDH-ES+A256KW
-//   - Post-quantum: ML-KEM-768 encapsulation + AES-256-GCM
+//   - Hybrid: ECDH P-256 + ML-KEM-768 hybrid KEM + AES-256-GCM
 func RetrieveMasterKey() ([]byte, error) {
 	format, err := DetectKeyFormat()
 	if err != nil {
@@ -203,14 +174,18 @@ func RetrieveMasterKey() ([]byte, error) {
 	}
 
 	switch format {
-	case FormatPostQuantum:
+	case FormatHybrid:
+		ecPriv, err := RetrieveHybridECKey()
+		if err != nil {
+			return nil, err
+		}
 		dk, err := RetrieveDecapsulationKey()
 		if err != nil {
 			return nil, err
 		}
-		masterKey, err := DecryptMLKEM(file, dk)
+		masterKey, err := DecryptHybrid(file, ecPriv, dk)
 		if err != nil {
-			return nil, fmt.Errorf("decrypting master key (post-quantum): %w", err)
+			return nil, fmt.Errorf("decrypting master key (hybrid): %w", err)
 		}
 		return masterKey, nil
 

@@ -25,7 +25,7 @@ func main() {
 					&cli.BoolFlag{
 						Name:    "classic",
 						Aliases: []string{"c"},
-						Usage:   "Use classical elliptic curve cryptography (ECDSA/ECDH-ES) instead of post-quantum",
+						Usage:   "Use classical elliptic curve cryptography (ECDSA/ECDH-ES) instead of hybrid",
 					},
 				},
 				Action: actions.Setup,
@@ -72,7 +72,7 @@ func main() {
 			},
 			{
 				Name:        "migrate",
-				Description: "Migrate keys from classical ECDSA to post-quantum (ML-DSA-65 + ML-KEM-768)",
+				Description: "Migrate keys from classical ECDSA to hybrid (ECDH P-256 + ML-KEM-768)",
 				Action:      actions.Migrate,
 			},
 			{

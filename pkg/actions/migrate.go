@@ -32,18 +32,18 @@ func Migrate(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("detecting key format: %w", err)
 	}
-	if format == utils.FormatPostQuantum {
-		fmt.Println("Your keys are already using post-quantum cryptography (ML-DSA-65 + ML-KEM-768). No migration needed.")
+	if format == utils.FormatHybrid {
+		fmt.Println("Your keys are already using hybrid cryptography (ECDH P-256 + ML-KEM-768). No migration needed.")
 		return nil
 	}
 
-	fmt.Println("This will migrate your keys from classical ECDSA/ECDH-ES to post-quantum")
-	fmt.Println("cryptography (ML-DSA-65 for signatures, ML-KEM-768 for key encapsulation).")
+	fmt.Println("This will migrate your keys from classical ECDSA/ECDH-ES to hybrid")
+	fmt.Println("cryptography (ECDH P-256 + ML-KEM-768 for key encapsulation).")
 	fmt.Println()
 	fmt.Println("What this does:")
 	fmt.Println("  1. Decrypt your master key using the current EC keypair")
-	fmt.Println("  2. Generate new post-quantum keypairs")
-	fmt.Println("  3. Re-encrypt your master key with the new ML-KEM-768 key")
+	fmt.Println("  2. Generate new hybrid keypair (ECDH P-256 + ML-KEM-768)")
+	fmt.Println("  3. Re-encrypt your master key with the hybrid key")
 	fmt.Println("  4. Upload the new public key to the server")
 	fmt.Println()
 	fmt.Println("Your encrypted SSH keys on the server remain unchanged (AES-256-GCM")
@@ -93,19 +93,19 @@ func Migrate(c *cli.Context) error {
 		return fmt.Errorf("backing up master_key: %w", err)
 	}
 
-	// Step 4: Generate new post-quantum keypair
-	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+	// Step 4: Generate new hybrid keypair
+	fmt.Println("Generating hybrid keypair (ECDH P-256 + ML-KEM-768)...")
 	if err := generateKey(); err != nil {
 		rollbackMigration(sshSyncDir)
-		return fmt.Errorf("generating PQ keys: %w", err)
+		return fmt.Errorf("generating hybrid keys: %w", err)
 	}
 
-	// Step 5: Re-encrypt master key with the new ML-KEM-768 key
-	fmt.Println("Re-encrypting master key with ML-KEM-768...")
+	// Step 5: Re-encrypt master key with the hybrid key
+	fmt.Println("Re-encrypting master key with hybrid ECDH + ML-KEM-768...")
 	encryptedMasterKey, err := utils.Encrypt(masterKey)
 	if err != nil {
 		rollbackMigration(sshSyncDir)
-		return fmt.Errorf("encrypting master key with PQ key: %w", err)
+		return fmt.Errorf("encrypting master key with hybrid key: %w", err)
 	}
 	if err := saveMasterKey(encryptedMasterKey); err != nil {
 		rollbackMigration(sshSyncDir)
@@ -125,9 +125,9 @@ func Migrate(c *cli.Context) error {
 	os.Remove(filepath.Join(sshSyncDir, "master_key.bak"))
 
 	fmt.Println()
-	fmt.Println("Migration complete! Your keys are now using post-quantum cryptography.")
-	fmt.Println("  Signing:    ML-DSA-65 (FIPS 204)")
-	fmt.Println("  Encryption: ML-KEM-768 (FIPS 203)")
+	fmt.Println("Migration complete! Your keys are now using hybrid cryptography.")
+	fmt.Println("  Auth:       ECDSA P-256 (ES256)")
+	fmt.Println("  Encryption: ECDH P-256 + ML-KEM-768 (FIPS 203) hybrid KEM")
 	return nil
 }
 

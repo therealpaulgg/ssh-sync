@@ -1,20 +1,19 @@
 package utils
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"math/big"
 	"time"
 
-	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
 // GetToken generates a signed JWT for authenticating with the server.
 // Auto-detects key format:
-//   - Legacy EC: ES512 signed via lestrrat-go/jwx
-//   - Post-quantum: ML-DSA-65 signed with custom JWT implementation
+//   - Legacy EC: ES512 signed via lestrrat-go/jwx (existing server compat)
+//   - Hybrid: ES256 signed via lestrrat-go/jwx (EC P-256 derived from hybrid seed)
 func GetToken() (string, error) {
 	format, err := DetectKeyFormat()
 	if err != nil {
@@ -22,8 +21,8 @@ func GetToken() (string, error) {
 	}
 
 	switch format {
-	case FormatPostQuantum:
-		return getTokenPQ()
+	case FormatHybrid:
+		return getTokenHybrid()
 	default:
 		return getTokenLegacy()
 	}
@@ -56,52 +55,40 @@ func getTokenLegacy() (string, error) {
 	return string(signed), nil
 }
 
-// getTokenPQ generates a JWT signed with ML-DSA-65 (post-quantum).
-func getTokenPQ() (string, error) {
+// getTokenHybrid generates a JWT signed with ES256 (ECDSA P-256).
+// The EC key is derived from the hybrid master seed.
+func getTokenHybrid() (string, error) {
 	profile, err := GetProfile()
 	if err != nil {
 		return "", err
 	}
-	sk, err := RetrieveSigningPrivateKey()
+	ecdhKey, err := RetrieveHybridECKey()
 	if err != nil {
 		return "", err
 	}
 
-	// Build JWT header
-	header := map[string]string{
-		"alg": "MLDSA65",
-		"typ": "JWT",
+	// Convert ecdh.PrivateKey → ecdsa.PrivateKey (same P-256 scalar)
+	ecdsaKey := &ecdsa.PrivateKey{
+		PublicKey: ecdsa.PublicKey{
+			Curve: elliptic.P256(),
+		},
+		D: new(big.Int).SetBytes(ecdhKey.Bytes()),
 	}
-	headerJSON, err := json.Marshal(header)
+	ecdsaKey.PublicKey.X, ecdsaKey.PublicKey.Y = elliptic.P256().ScalarBaseMult(ecdhKey.Bytes())
+
+	builder := jwt.NewBuilder()
+	builder.Issuer("github.com/therealpaulgg/ssh-sync")
+	builder.IssuedAt(time.Now().Add(-1 * time.Minute))
+	builder.Expiration(time.Now().Add(2 * time.Minute))
+	builder.Claim("username", profile.Username)
+	builder.Claim("machine", profile.MachineName)
+	tok, err := builder.Build()
 	if err != nil {
-		return "", fmt.Errorf("marshaling JWT header: %w", err)
+		return "", err
 	}
-
-	// Build JWT payload
-	now := time.Now()
-	payload := map[string]interface{}{
-		"iss":      "github.com/therealpaulgg/ssh-sync",
-		"iat":      now.Add(-1 * time.Minute).Unix(),
-		"exp":      now.Add(2 * time.Minute).Unix(),
-		"username": profile.Username,
-		"machine":  profile.MachineName,
-	}
-	payloadJSON, err := json.Marshal(payload)
+	signed, err := jwt.Sign(tok, jwt.WithKey(jwa.ES256, ecdsaKey))
 	if err != nil {
-		return "", fmt.Errorf("marshaling JWT payload: %w", err)
+		return "", err
 	}
-
-	// Encode header and payload
-	headerB64 := base64.RawURLEncoding.EncodeToString(headerJSON)
-	payloadB64 := base64.RawURLEncoding.EncodeToString(payloadJSON)
-	signingInput := headerB64 + "." + payloadB64
-
-	// Sign with ML-DSA-65
-	sig := make([]byte, mldsa65.SignatureSize)
-	if err := mldsa65.SignTo(sk, []byte(signingInput), nil, false, sig); err != nil {
-		return "", fmt.Errorf("ML-DSA-65 signing failed: %w", err)
-	}
-	sigB64 := base64.RawURLEncoding.EncodeToString(sig)
-
-	return signingInput + "." + sigB64, nil
+	return string(signed), nil
 }
