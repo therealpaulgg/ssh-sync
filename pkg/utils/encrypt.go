@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/mlkem"
 	"crypto/rand"
 	"crypto/sha256"
@@ -142,9 +143,13 @@ func EncryptWithHybridPublicKey(b []byte, ecPubPEM []byte, ekPEM []byte) ([]byte
 	if err != nil {
 		return nil, fmt.Errorf("parsing EC public key: %w", err)
 	}
-	ecdhPub, ok := genericKey.(*ecdh.PublicKey)
+	ecdsaPub, ok := genericKey.(*ecdsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("expected *ecdh.PublicKey, got %T", genericKey)
+		return nil, fmt.Errorf("expected *ecdsa.PublicKey, got %T", genericKey)
+	}
+	ecdhPub, err := ecdsaPub.ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("converting EC public key to ECDH: %w", err)
 	}
 
 	// Parse ML-KEM encapsulation key
