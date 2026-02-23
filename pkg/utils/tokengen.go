@@ -111,7 +111,7 @@ func getTokenPQ() (string, error) {
 
 // VerifyMLDSA65JWT verifies a JWT signed with ML-DSA-65.
 // This is provided for completeness; the server performs verification.
-func VerifyMLDSA65JWT(tokenStr string, pk *mldsa.PublicKey65) (bool, error) {
+func VerifyMLDSA65JWT(tokenStr string, pk *mldsa.PublicKey) (bool, error) {
 	// Split into header.payload.signature
 	parts := splitJWT(tokenStr)
 	if len(parts) != 3 {
@@ -122,7 +122,10 @@ func VerifyMLDSA65JWT(tokenStr string, pk *mldsa.PublicKey65) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("decoding signature: %w", err)
 	}
-	return mldsa.Verify65(pk, []byte(signingInput), sig), nil
+	if err := mldsa.Verify(pk, []byte(signingInput), sig, nil); err != nil {
+		return false, nil
+	}
+	return true, nil
 }
 
 func splitJWT(s string) []string {

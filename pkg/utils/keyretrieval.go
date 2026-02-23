@@ -75,7 +75,7 @@ func retrievePQSeed() ([]byte, error) {
 }
 
 // RetrieveSigningKey loads the ML-DSA-65 private key from the PQ master seed.
-func RetrieveSigningKey() (*mldsa.PrivateKey65, error) {
+func RetrieveSigningKey() (*mldsa.PrivateKey, error) {
 	seed, err := retrievePQSeed()
 	if err != nil {
 		return nil, err
