@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/ecdh"
 	"crypto/mlkem"
 	"crypto/sha256"
 	"fmt"
@@ -15,45 +14,31 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// DecryptHybrid decrypts data encrypted with EncryptHybrid.
-// Input format: [65 bytes eph EC pub][1088 bytes ML-KEM ct][12 bytes nonce][AES-GCM ct+tag]
-func DecryptHybrid(data []byte, ecPriv *ecdh.PrivateKey, dk *mlkem.DecapsulationKey768) ([]byte, error) {
-	if len(data) < hybridHeaderLen {
-		return nil, fmt.Errorf("data too short for hybrid ciphertext header")
+// DecryptMLKEM decrypts data encrypted with EncryptMLKEM.
+// Input format: [1088 bytes ML-KEM ct][12 bytes nonce][AES-GCM ct+tag]
+func DecryptMLKEM(data []byte, dk *mlkem.DecapsulationKey768) ([]byte, error) {
+	if len(data) < mlkemCtSize {
+		return nil, fmt.Errorf("data too short for ML-KEM ciphertext")
 	}
 
-	// 1. Parse components
-	ephPubBytes := data[:ecdhPubKeySize]
-	kemCiphertext := data[ecdhPubKeySize:hybridHeaderLen]
-	remainder := data[hybridHeaderLen:]
+	// 1. Parse ML-KEM ciphertext
+	kemCiphertext := data[:mlkemCtSize]
+	remainder := data[mlkemCtSize:]
 
-	// 2. ECDH key agreement with ephemeral public key
-	ephPub, err := ecdh.P256().NewPublicKey(ephPubBytes)
-	if err != nil {
-		return nil, fmt.Errorf("parsing ephemeral EC public key: %w", err)
-	}
-	sharedEC, err := ecPriv.ECDH(ephPub)
-	if err != nil {
-		return nil, fmt.Errorf("ECDH key agreement: %w", err)
-	}
-
-	// 3. ML-KEM-768 decapsulation
-	sharedKEM, err := dk.Decapsulate(kemCiphertext)
+	// 2. ML-KEM-768 decapsulation → shared secret
+	sharedSecret, err := dk.Decapsulate(kemCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("ML-KEM decapsulation failed: %w", err)
 	}
 
-	// 4. Combine shared secrets via HKDF (same as encrypt)
-	combined := make([]byte, 0, len(sharedEC)+len(sharedKEM))
-	combined = append(combined, sharedEC...)
-	combined = append(combined, sharedKEM...)
-	hkdfReader := hkdf.New(sha256.New, combined, nil, []byte("ssh-sync-hybrid-v1"))
+	// 3. Derive AES-256 key via HKDF (same as encrypt)
+	hkdfReader := hkdf.New(sha256.New, sharedSecret, nil, []byte("ssh-sync-pq-v1"))
 	aesKey := make([]byte, 32)
 	if _, err := io.ReadFull(hkdfReader, aesKey); err != nil {
 		return nil, fmt.Errorf("deriving AES key: %w", err)
 	}
 
-	// 5. AES-256-GCM decrypt
+	// 4. AES-256-GCM decrypt
 	blockCipher, err := aes.NewCipher(aesKey)
 	if err != nil {
 		return nil, fmt.Errorf("creating AES cipher: %w", err)
@@ -77,7 +62,7 @@ func DecryptHybrid(data []byte, ecPriv *ecdh.PrivateKey, dk *mlkem.Decapsulation
 
 // Decrypt decrypts data using the local key. Auto-detects key format:
 //   - Legacy EC: JWE with ECDH-ES+A256KW
-//   - Hybrid: ECDH P-256 + ML-KEM-768 + AES-256-GCM
+//   - Post-quantum: ML-KEM-768 + AES-256-GCM
 func Decrypt(b []byte) ([]byte, error) {
 	format, err := DetectKeyFormat()
 	if err != nil {
@@ -85,16 +70,12 @@ func Decrypt(b []byte) ([]byte, error) {
 	}
 
 	switch format {
-	case FormatHybrid:
-		ecPriv, err := RetrieveHybridECKey()
-		if err != nil {
-			return nil, err
-		}
+	case FormatPostQuantum:
 		dk, err := RetrieveDecapsulationKey()
 		if err != nil {
 			return nil, err
 		}
-		return DecryptHybrid(b, ecPriv, dk)
+		return DecryptMLKEM(b, dk)
 
 	default: // FormatLegacyEC
 		key, err := RetrievePrivateKey()

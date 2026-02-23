@@ -1,36 +1,36 @@
 package utils
 
 import (
-	"crypto/ecdh"
 	"crypto/mlkem"
 	"crypto/sha256"
 	"fmt"
 	"io"
 
+	"filippo.io/mldsa"
 	"golang.org/x/crypto/hkdf"
 )
 
-// MasterSeedSize is the size in bytes of the hybrid master seed.
+// MasterSeedSize is the size in bytes of the PQ master seed.
 const MasterSeedSize = 64
 
-// DeriveHybridKeys deterministically derives both keypairs from a single
+// DerivePQKeys deterministically derives both keypairs from a single
 // master seed using HKDF with domain separation:
-//   - EC P-256 private key for ECDH key agreement and ECDSA signing (info: "ssh-sync-ec-v1")
+//   - ML-DSA-65 private key for digital signatures (info: "ssh-sync-mldsa65-v1")
 //   - ML-KEM-768 decapsulation key for post-quantum KEM (info: "ssh-sync-mlkem768-v1")
-func DeriveHybridKeys(masterSeed []byte) (*ecdh.PrivateKey, *mlkem.DecapsulationKey768, error) {
+func DerivePQKeys(masterSeed []byte) (*mldsa.PrivateKey65, *mlkem.DecapsulationKey768, error) {
 	if len(masterSeed) != MasterSeedSize {
 		return nil, nil, fmt.Errorf("master seed must be %d bytes, got %d", MasterSeedSize, len(masterSeed))
 	}
 
-	// Derive EC P-256 private key (32 bytes)
-	ecReader := hkdf.New(sha256.New, masterSeed, nil, []byte("ssh-sync-ec-v1"))
-	ecSeed := make([]byte, 32)
-	if _, err := io.ReadFull(ecReader, ecSeed); err != nil {
-		return nil, nil, fmt.Errorf("deriving EC P-256 seed: %w", err)
+	// Derive ML-DSA-65 seed (32 bytes)
+	dsaReader := hkdf.New(sha256.New, masterSeed, nil, []byte("ssh-sync-mldsa65-v1"))
+	dsaSeed := make([]byte, mldsa.SeedSize65)
+	if _, err := io.ReadFull(dsaReader, dsaSeed); err != nil {
+		return nil, nil, fmt.Errorf("deriving ML-DSA-65 seed: %w", err)
 	}
-	ecPriv, err := ecdh.P256().NewPrivateKey(ecSeed)
+	sk, err := mldsa.NewPrivateKey65(dsaSeed)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating EC P-256 private key: %w", err)
+		return nil, nil, fmt.Errorf("creating ML-DSA-65 private key: %w", err)
 	}
 
 	// Derive ML-KEM-768 seed (64 bytes)
@@ -44,5 +44,5 @@ func DeriveHybridKeys(masterSeed []byte) (*ecdh.PrivateKey, *mlkem.Decapsulation
 		return nil, nil, fmt.Errorf("creating ML-KEM-768 key from derived seed: %w", err)
 	}
 
-	return ecPriv, dk, nil
+	return sk, dk, nil
 }

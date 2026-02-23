@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -30,13 +29,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// generateKey generates a single hybrid master seed from which both keypairs
+// generateKey generates a single PQ master seed from which both keypairs
 // are deterministically derived via HKDF:
-//   - EC P-256 for ECDSA authentication (JWT signing) and ECDH key agreement
+//   - ML-DSA-65 for digital signatures (JWT signing)
 //   - ML-KEM-768 for post-quantum key encapsulation
 //
-// Private key file (keypair): single PEM block "SSHSYNC HYBRID SEED" (64 bytes)
-// Public key file (keypair.pub): EC P-256 public key + ML-KEM-768 encapsulation key
+// Private key file (keypair): single PEM block "SSHSYNC PQ MASTER SEED" (64 bytes)
+// Public key file (keypair.pub): ML-DSA-65 public key + ML-KEM-768 encapsulation key
 func generateKey() error {
 	u, err := user.Current()
 	if err != nil {
@@ -54,9 +53,9 @@ func generateKey() error {
 	}
 
 	// Derive both keypairs from the seed
-	ecPriv, dk, err := utils.DeriveHybridKeys(masterSeed)
+	sk, dk, err := utils.DerivePQKeys(masterSeed)
 	if err != nil {
-		return fmt.Errorf("deriving hybrid keys: %w", err)
+		return fmt.Errorf("deriving PQ keys: %w", err)
 	}
 
 	// Write private key file: single PEM block with the master seed
@@ -65,22 +64,18 @@ func generateKey() error {
 		return err
 	}
 	defer privOut.Close()
-	if err := pem.Encode(privOut, &pem.Block{Type: "SSHSYNC HYBRID SEED", Bytes: masterSeed}); err != nil {
+	if err := pem.Encode(privOut, &pem.Block{Type: "SSHSYNC PQ MASTER SEED", Bytes: masterSeed}); err != nil {
 		return err
 	}
 
-	// Write public key file: EC P-256 public key (for JWT verification + ECDH)
-	// followed by ML-KEM-768 encapsulation key (for hybrid KEM)
-	ecPubBytes, err := x509.MarshalPKIXPublicKey(ecPriv.Public().(*ecdh.PublicKey))
-	if err != nil {
-		return fmt.Errorf("marshaling EC public key: %w", err)
-	}
+	// Write public key file: ML-DSA-65 public key (for JWT verification)
+	// followed by ML-KEM-768 encapsulation key (for PQ encryption)
 	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
 	defer pubOut.Close()
-	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: ecPubBytes}); err != nil {
+	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
 		return err
 	}
 	if err := pem.Encode(pubOut, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
@@ -257,7 +252,7 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 			return err
 		}
 	} else {
-		fmt.Println("Generating hybrid keypair (ECDH P-256 + ML-KEM-768)...")
+		fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
 		if err := generateKey(); err != nil {
 			return err
 		}
@@ -362,15 +357,15 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 			return err
 		}
 	} else {
-		fmt.Println("Generating hybrid keypair (ECDH P-256 + ML-KEM-768)...")
+		fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
 		if err := generateKey(); err != nil {
 			return err
 		}
 	}
 	saveProfile(username, machineName, *serverUrl)
 	// Send public key(s) to server via WebSocket.
-	// PublicKey is always the EC signing/identity key.
-	// EncapsulationKey is only set for hybrid — server relays it to Machine A for key exchange.
+	// PublicKey is always the signing/identity key.
+	// EncapsulationKey is only set for PQ — server relays it to Machine A for key exchange.
 	var pubKeyMsg dto.PublicKeyDto
 	if classic {
 		f, err := getPubkeyFile()
@@ -384,11 +379,11 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 		}
 		pubKeyMsg.PublicKey = pubkeyPayload
 	} else {
-		ecPubPEM, ekPEM, err := utils.BuildHybridPublicKeys()
+		sigPubPEM, ekPEM, err := utils.BuildPQPublicKeys()
 		if err != nil {
 			return err
 		}
-		pubKeyMsg.PublicKey = ecPubPEM
+		pubKeyMsg.PublicKey = sigPubPEM
 		pubKeyMsg.EncapsulationKey = ekPEM
 	}
 	if err := wsutils.WriteClientMessage(&conn, pubKeyMsg); err != nil {
