@@ -70,10 +70,8 @@ func ChallengeResponse(c *cli.Context) error {
 	}
 	var encryptedMasterKey []byte
 	if len(response.Data.EncapsulationKey) > 0 {
-		// Post-quantum: encrypt with ML-KEM-768
 		encryptedMasterKey, err = utils.EncryptWithPQPublicKey(masterKey, response.Data.EncapsulationKey)
 	} else {
-		// Legacy EC: encrypt with the EC public key
 		encryptedMasterKey, err = utils.EncryptWithECPublicKey(masterKey, response.Data.PublicKey)
 	}
 	if err != nil {
