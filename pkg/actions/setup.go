@@ -47,7 +47,7 @@ func generateKey() error {
 	}
 
 	// Generate random master seed
-	masterSeed := make([]byte, utils.MLKEMMasterSeedSize)
+	masterSeed := make([]byte, utils.MasterSeedSize)
 	if _, err := rand.Read(masterSeed); err != nil {
 		return fmt.Errorf("generating master seed: %w", err)
 	}

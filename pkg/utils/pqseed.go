@@ -10,16 +10,13 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// MLKEMMasterSeedSize is the size in bytes of the PQ master seed.
-const MLKEMMasterSeedSize = 64
-
-// MLDSAMMasterSeedSize is the size in bytes of the PQ master seed.
-const MLDSAMMasterSeedSize = 32
+// MasterSeedSize is the size in bytes of the PQ master seed.
+const MasterSeedSize = 64
 
 // DeriveMLDSAKey deterministically derives an MLDSA keypair from a single master seed
 func DeriveMLDSAKey(masterSeed []byte) (*mldsa.PrivateKey, error) {
-	if len(masterSeed) != MLKEMMasterSeedSize {
-		return nil, fmt.Errorf("master seed must be %d bytes, got %d", MLKEMMasterSeedSize, len(masterSeed))
+	if len(masterSeed) != MasterSeedSize {
+		return nil, fmt.Errorf("master seed must be %d bytes, got %d", MasterSeedSize, len(masterSeed))
 	}
 
 	// Derive ML-DSA-65 seed (32 bytes)
@@ -38,8 +35,8 @@ func DeriveMLDSAKey(masterSeed []byte) (*mldsa.PrivateKey, error) {
 
 // DeriveMLKEMKey deterministically derives an MLKEM keypair from a single master seed
 func DeriveMLKEMKey(masterSeed []byte) (*mlkem.DecapsulationKey768, error) {
-	if len(masterSeed) != MLKEMMasterSeedSize {
-		return nil, fmt.Errorf("master seed must be %d bytes, got %d", MLKEMMasterSeedSize, len(masterSeed))
+	if len(masterSeed) != MasterSeedSize {
+		return nil, fmt.Errorf("master seed must be %d bytes, got %d", MasterSeedSize, len(masterSeed))
 	}
 
 	// Derive ML-KEM-768 seed (64 bytes)
