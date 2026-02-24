@@ -264,13 +264,12 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 		fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
 		io.Copy(fileWriter, pubkeyFile)
 	} else {
-		sigPubPEM, ekPEM, err := utils.BuildPQPublicKeys()
+		sigPubPEM, _, err := utils.BuildPQPublicKeys()
 		if err != nil {
 			return err
 		}
 		fileWriter, _ := multipartWriter.CreateFormFile("key", "keypair.pub")
 		fileWriter.Write(sigPubPEM)
-		fileWriter.Write(ekPEM)
 	}
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)

@@ -135,7 +135,7 @@ func uploadMigratedKey(token string) error {
 		return err
 	}
 
-	sigPubPEM, ekPEM, err := utils.BuildPQPublicKeys()
+	sigPubPEM, _, err := utils.BuildPQPublicKeys()
 	if err != nil {
 		return err
 	}
@@ -147,9 +147,6 @@ func uploadMigratedKey(token string) error {
 		return err
 	}
 	if _, err := fileWriter.Write(sigPubPEM); err != nil {
-		return err
-	}
-	if _, err := fileWriter.Write(ekPEM); err != nil {
 		return err
 	}
 	multipartWriter.Close()
