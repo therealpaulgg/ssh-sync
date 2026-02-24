@@ -34,9 +34,7 @@ import (
 //   - ML-DSA-65 for digital signatures (JWT signing)
 //   - ML-KEM-768 for post-quantum key encapsulation
 //
-// Private key file (keypair): single PEM block "SSHSYNC PQ MASTER SEED" (64 bytes)
-// Public key file (keypair.pub): ML-DSA-65 public key only (for JWT verification on the server).
-// The ML-KEM-768 encapsulation key is derived on demand and sent separately during machine setup.
+// Only the seed is stored on disk (keypair). Public keys are derived on demand.
 func generateKey() error {
 	u, err := user.Current()
 	if err != nil {
@@ -53,12 +51,6 @@ func generateKey() error {
 		return fmt.Errorf("generating master seed: %w", err)
 	}
 
-	// Derive mldsa keypair from the seed
-	mldsaKey, err := utils.DeriveMLDSAKey(masterSeed)
-	if err != nil {
-		return fmt.Errorf("deriving PQ keys: %w", err)
-	}
-
 	// Write private key file: single PEM block with the master seed
 	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
@@ -66,17 +58,6 @@ func generateKey() error {
 	}
 	defer privOut.Close()
 	if err := pem.Encode(privOut, &pem.Block{Type: "SSHSYNC PQ MASTER SEED", Bytes: masterSeed}); err != nil {
-		return err
-	}
-
-	// Write public key file: ML-DSA-65 public key (for JWT verification)
-	// followed by ML-KEM-768 encapsulation key (for PQ encryption)
-	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer pubOut.Close()
-	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA PUBLIC KEY", Bytes: mldsaKey.PublicKey().Bytes()}); err != nil {
 		return err
 	}
 
@@ -274,12 +255,23 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	}
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
-	pubkeyFile, err := getPubkeyFile()
-	if err != nil {
-		return err
+	if classic {
+		pubkeyFile, err := getPubkeyFile()
+		if err != nil {
+			return err
+		}
+		defer pubkeyFile.Close()
+		fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
+		io.Copy(fileWriter, pubkeyFile)
+	} else {
+		sigPubPEM, ekPEM, err := utils.BuildPQPublicKeys()
+		if err != nil {
+			return err
+		}
+		fileWriter, _ := multipartWriter.CreateFormFile("key", "keypair.pub")
+		fileWriter.Write(sigPubPEM)
+		fileWriter.Write(ekPEM)
 	}
-	fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
-	io.Copy(fileWriter, pubkeyFile)
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.Close()

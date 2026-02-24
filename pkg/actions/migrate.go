@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -86,9 +85,6 @@ func Migrate(c *cli.Context) error {
 	if err := backupFile(filepath.Join(sshSyncDir, "keypair"), filepath.Join(sshSyncDir, "keypair.bak")); err != nil {
 		return fmt.Errorf("backing up keypair: %w", err)
 	}
-	if err := backupFile(filepath.Join(sshSyncDir, "keypair.pub"), filepath.Join(sshSyncDir, "keypair.pub.bak")); err != nil {
-		return fmt.Errorf("backing up keypair.pub: %w", err)
-	}
 	if err := backupFile(filepath.Join(sshSyncDir, "master_key"), filepath.Join(sshSyncDir, "master_key.bak")); err != nil {
 		return fmt.Errorf("backing up master_key: %w", err)
 	}
@@ -121,7 +117,6 @@ func Migrate(c *cli.Context) error {
 
 	// Step 7: Clean up backups
 	os.Remove(filepath.Join(sshSyncDir, "keypair.bak"))
-	os.Remove(filepath.Join(sshSyncDir, "keypair.pub.bak"))
 	os.Remove(filepath.Join(sshSyncDir, "master_key.bak"))
 
 	fmt.Println()
@@ -140,24 +135,21 @@ func uploadMigratedKey(token string) error {
 		return err
 	}
 
-	u, err := user.Current()
+	sigPubPEM, ekPEM, err := utils.BuildPQPublicKeys()
 	if err != nil {
 		return err
 	}
-	pubkeyPath := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
-	pubkeyFile, err := os.Open(pubkeyPath)
-	if err != nil {
-		return err
-	}
-	defer pubkeyFile.Close()
 
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
-	fileWriter, err := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
+	fileWriter, err := multipartWriter.CreateFormFile("key", "keypair.pub")
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(fileWriter, pubkeyFile); err != nil {
+	if _, err := fileWriter.Write(sigPubPEM); err != nil {
+		return err
+	}
+	if _, err := fileWriter.Write(ekPEM); err != nil {
 		return err
 	}
 	multipartWriter.Close()
@@ -193,10 +185,8 @@ func backupFile(src, dst string) error {
 func rollbackMigration(sshSyncDir string) {
 	fmt.Fprintln(os.Stderr, "Migration failed, rolling back...")
 	restoreBackup(filepath.Join(sshSyncDir, "keypair.bak"), filepath.Join(sshSyncDir, "keypair"))
-	restoreBackup(filepath.Join(sshSyncDir, "keypair.pub.bak"), filepath.Join(sshSyncDir, "keypair.pub"))
 	restoreBackup(filepath.Join(sshSyncDir, "master_key.bak"), filepath.Join(sshSyncDir, "master_key"))
 	os.Remove(filepath.Join(sshSyncDir, "keypair.bak"))
-	os.Remove(filepath.Join(sshSyncDir, "keypair.pub.bak"))
 	os.Remove(filepath.Join(sshSyncDir, "master_key.bak"))
 }
 
