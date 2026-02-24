@@ -83,7 +83,7 @@ func RetrieveSigningKey() (*mldsa.PrivateKey, error) {
 	if seed == nil {
 		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-	sk, _, err := DerivePQKeys(seed)
+	sk, err := DeriveMLDSAKey(seed)
 	if err != nil {
 		return nil, fmt.Errorf("deriving ML-DSA-65 key from seed: %w", err)
 	}
@@ -99,7 +99,7 @@ func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
 	if seed == nil {
 		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-	_, dk, err := DerivePQKeys(seed)
+	dk, err := DeriveMLKEMKey(seed)
 	if err != nil {
 		return nil, fmt.Errorf("deriving decapsulation key from seed: %w", err)
 	}
@@ -127,14 +127,19 @@ func BuildPQPublicKeys() (sigPubPEM []byte, ekPEM []byte, err error) {
 	if seed == nil {
 		return nil, nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
-	sk, dk, err := DerivePQKeys(seed)
+	sk, err := DeriveMLDSAKey(seed)
+	if err != nil {
+		return nil, nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
+	}
+
+	dk, err := DeriveMLKEMKey(seed)
 	if err != nil {
 		return nil, nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
 	}
 
 	// ML-DSA-65 public key PEM
 	var sigBuf bytes.Buffer
-	if err := pem.Encode(&sigBuf, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
+	if err := pem.Encode(&sigBuf, &pem.Block{Type: "MLDSA PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
 		return nil, nil, err
 	}
 

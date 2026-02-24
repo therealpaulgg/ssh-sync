@@ -47,13 +47,13 @@ func generateKey() error {
 	}
 
 	// Generate random master seed
-	masterSeed := make([]byte, utils.MasterSeedSize)
+	masterSeed := make([]byte, utils.MLKEMMasterSeedSize)
 	if _, err := rand.Read(masterSeed); err != nil {
 		return fmt.Errorf("generating master seed: %w", err)
 	}
 
-	// Derive both keypairs from the seed
-	sk, dk, err := utils.DerivePQKeys(masterSeed)
+	// Derive mldsa keypair from the seed
+	mldsaKey, err := utils.DeriveMLDSAKey(masterSeed)
 	if err != nil {
 		return fmt.Errorf("deriving PQ keys: %w", err)
 	}
@@ -75,10 +75,7 @@ func generateKey() error {
 		return err
 	}
 	defer pubOut.Close()
-	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA65 PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
-		return err
-	}
-	if err := pem.Encode(pubOut, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
+	if err := pem.Encode(pubOut, &pem.Block{Type: "MLDSA PUBLIC KEY", Bytes: mldsaKey.PublicKey().Bytes()}); err != nil {
 		return err
 	}
 

@@ -58,7 +58,7 @@ func getTokenLegacy() (string, error) {
 }
 
 // getTokenPQ generates a JWT signed with ML-DSA-65 (FIPS 204).
-// Uses a custom "MLDSA65" algorithm header since JWS doesn't have a
+// Uses a custom "MLDSA" algorithm header since JWS doesn't have a
 // standard algorithm identifier for ML-DSA yet.
 func getTokenPQ() (string, error) {
 	profile, err := GetProfile()
@@ -72,7 +72,7 @@ func getTokenPQ() (string, error) {
 
 	// Build JWT header
 	header := map[string]string{
-		"alg": "MLDSA65",
+		"alg": "MLDSA",
 		"typ": "JWT",
 	}
 	headerJSON, err := json.Marshal(header)
@@ -99,19 +99,19 @@ func getTokenPQ() (string, error) {
 	b64Payload := base64.RawURLEncoding.EncodeToString(payloadJSON)
 	signingInput := b64Header + "." + b64Payload
 
-	// Sign with ML-DSA-65
+	// Sign with ML-DSA
 	sig, err := sk.Sign(rand.Reader, []byte(signingInput), nil)
 	if err != nil {
-		return "", fmt.Errorf("ML-DSA-65 signing: %w", err)
+		return "", fmt.Errorf("ML-DSA signing: %w", err)
 	}
 	b64Sig := base64.RawURLEncoding.EncodeToString(sig)
 
 	return signingInput + "." + b64Sig, nil
 }
 
-// VerifyMLDSA65JWT verifies a JWT signed with ML-DSA-65.
+// VerifyMLDSAJWT verifies a JWT signed with ML-DSA.
 // This is provided for completeness; the server performs verification.
-func VerifyMLDSA65JWT(tokenStr string, pk *mldsa.PublicKey) (bool, error) {
+func VerifyMLDSAJWT(tokenStr string, pk *mldsa.PublicKey) (bool, error) {
 	// Split into header.payload.signature
 	parts := splitJWT(tokenStr)
 	if len(parts) != 3 {
