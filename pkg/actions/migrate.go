@@ -135,7 +135,7 @@ func uploadMigratedKey(token string) error {
 		return err
 	}
 
-	sigPubPEM, _, err := utils.BuildPQPublicKeys()
+	sigPubPEM, err := utils.BuildMLDSAPublicKeyPEM()
 	if err != nil {
 		return err
 	}

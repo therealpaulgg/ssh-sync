@@ -264,7 +264,7 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 		fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
 		io.Copy(fileWriter, pubkeyFile)
 	} else {
-		sigPubPEM, _, err := utils.BuildPQPublicKeys()
+		sigPubPEM, err := utils.BuildMLDSAPublicKeyPEM()
 		if err != nil {
 			return err
 		}
@@ -370,7 +370,11 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 		}
 		pubKeyMsg.PublicKey = pubkeyPayload
 	} else {
-		sigPubPEM, ekPEM, err := utils.BuildPQPublicKeys()
+		sigPubPEM, err := utils.BuildMLDSAPublicKeyPEM()
+		if err != nil {
+			return err
+		}
+		ekPEM, err := utils.BuildMLKEMEncapsulationKeyPEM()
 		if err != nil {
 			return err
 		}

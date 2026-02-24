@@ -115,40 +115,44 @@ func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 	return dk.EncapsulationKey(), nil
 }
 
-// BuildPQPublicKeys returns the ML-DSA-65 public key and ML-KEM-768
-// encapsulation key as separate PEM-encoded byte slices. The caller sends them
-// in distinct DTO fields so the server can store the ML-DSA key (for JWT auth)
-// and relay the encapsulation key independently (for ML-KEM encryption).
-func BuildPQPublicKeys() (sigPubPEM []byte, ekPEM []byte, err error) {
+// BuildMLDSAPublicKeyPEM returns the ML-DSA-65 public key as a PEM-encoded byte slice.
+func BuildMLDSAPublicKeyPEM() ([]byte, error) {
 	seed, err := retrievePQSeed()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if seed == nil {
-		return nil, nil, fmt.Errorf("PQ master seed not found in keypair file")
+		return nil, fmt.Errorf("PQ master seed not found in keypair file")
 	}
 	sk, err := DeriveMLDSAKey(seed)
 	if err != nil {
-		return nil, nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
+		return nil, fmt.Errorf("deriving ML-DSA key for public key PEM: %w", err)
 	}
+	var buf bytes.Buffer
+	if err := pem.Encode(&buf, &pem.Block{Type: "MLDSA PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
 
+// BuildMLKEMEncapsulationKeyPEM returns the ML-KEM-768 encapsulation key as a PEM-encoded byte slice.
+func BuildMLKEMEncapsulationKeyPEM() ([]byte, error) {
+	seed, err := retrievePQSeed()
+	if err != nil {
+		return nil, err
+	}
+	if seed == nil {
+		return nil, fmt.Errorf("PQ master seed not found in keypair file")
+	}
 	dk, err := DeriveMLKEMKey(seed)
 	if err != nil {
-		return nil, nil, fmt.Errorf("deriving keys for public key PEM: %w", err)
+		return nil, fmt.Errorf("deriving ML-KEM key for encapsulation key PEM: %w", err)
 	}
-
-	// ML-DSA-65 public key PEM
-	var sigBuf bytes.Buffer
-	if err := pem.Encode(&sigBuf, &pem.Block{Type: "MLDSA PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
-		return nil, nil, err
+	var buf bytes.Buffer
+	if err := pem.Encode(&buf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
+		return nil, err
 	}
-
-	// ML-KEM encapsulation key PEM
-	var ekBuf bytes.Buffer
-	if err := pem.Encode(&ekBuf, &pem.Block{Type: "MLKEM768 ENCAPSULATION KEY", Bytes: dk.EncapsulationKey().Bytes()}); err != nil {
-		return nil, nil, err
-	}
-	return sigBuf.Bytes(), ekBuf.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 // --- Format-aware master key retrieval ---
