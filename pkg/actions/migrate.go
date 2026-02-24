@@ -174,6 +174,7 @@ func uploadMigratedKey(token string) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to upload new public key. status code: " + strconv.Itoa(res.StatusCode))
 	}

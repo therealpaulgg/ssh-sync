@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"filippo.io/mldsa"
@@ -129,14 +130,5 @@ func VerifyMLDSAJWT(tokenStr string, pk *mldsa.PublicKey) (bool, error) {
 }
 
 func splitJWT(s string) []string {
-	var parts []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == '.' {
-			parts = append(parts, s[start:i])
-			start = i + 1
-		}
-	}
-	parts = append(parts, s[start:])
-	return parts
+	return strings.Split(s, ".")
 }

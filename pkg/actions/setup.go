@@ -35,7 +35,8 @@ import (
 //   - ML-KEM-768 for post-quantum key encapsulation
 //
 // Private key file (keypair): single PEM block "SSHSYNC PQ MASTER SEED" (64 bytes)
-// Public key file (keypair.pub): ML-DSA-65 public key + ML-KEM-768 encapsulation key
+// Public key file (keypair.pub): ML-DSA-65 public key only (for JWT verification on the server).
+// The ML-KEM-768 encapsulation key is derived on demand and sent separately during machine setup.
 func generateKey() error {
 	u, err := user.Current()
 	if err != nil {
@@ -190,6 +191,7 @@ func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer res.Body.Close()
 	if res.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
@@ -292,6 +294,7 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to create user. status code: " + strconv.Itoa(res.StatusCode))
 	}
@@ -451,10 +454,12 @@ func Setup(c *cli.Context) error {
 	}
 
 	// test connection to server
-	if _, err := http.Get(serverUrl.String()); err != nil {
+	pingResp, err := http.Get(serverUrl.String())
+	if err != nil {
 		fmt.Println("It seems we are unable to connect to this ssh-sync server at the moment. Please check your configuration and try again.")
 		return err
 	}
+	pingResp.Body.Close()
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
 	var answer string
 	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {

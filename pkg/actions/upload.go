@@ -47,6 +47,7 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
@@ -56,7 +57,6 @@ func Upload(c *cli.Context) error {
 	if err := json.NewDecoder(res.Body).Decode(&serverData); err != nil {
 		return err
 	}
-	res.Body.Close()
 
 	// Create a map of server keys by filename for quick lookup
 	serverKeysByFilename := make(map[string]dto.KeyDto)
@@ -163,6 +163,7 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer res2.Body.Close()
 	if res2.StatusCode != http.StatusOK {
 		return errors.New("failed to upload data. status code: " + strconv.Itoa(res2.StatusCode))
 	}

@@ -1,10 +1,9 @@
 module github.com/therealpaulgg/ssh-sync
 
-go 1.25.0
-
-toolchain go1.25.1
+go 1.26.0
 
 require (
+	filippo.io/mldsa v0.0.0-20260215214346-43d0283efc3e
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v0.13.1
@@ -19,7 +18,6 @@ require (
 )
 
 require (
-	filippo.io/mldsa v0.0.0-20260215214346-43d0283efc3e // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/charmbracelet/x/ansi v0.3.2 // indirect
