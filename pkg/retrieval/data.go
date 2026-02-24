@@ -14,7 +14,7 @@ import (
 
 func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	var data dto.DataDto
-	token, err := utils.GetToken()
+	token, err := getToken()
 	if err != nil {
 		return data, err
 	}
@@ -36,7 +36,7 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
 		return data, err
 	}
-	masterKey, err := utils.RetrieveMasterKey()
+	masterKey, err := retrieveMasterKey()
 	if err != nil {
 		return data, err
 	}
@@ -51,7 +51,7 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 }
 
 func DeleteKey(profile *models.Profile, key dto.KeyDto) error {
-	token, err := utils.GetToken()
+	token, err := getToken()
 	if err != nil {
 		return err
 	}
