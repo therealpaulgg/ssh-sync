@@ -47,6 +47,16 @@ func RetrievePublicKey() (jwk.Key, error) {
 	return key, err
 }
 
+// BuildECPublicKeyPEM returns the EC public key PEM bytes from ~/.ssh-sync/keypair.pub.
+func BuildECPublicKeyPEM() ([]byte, error) {
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
+	return os.ReadFile(p)
+}
+
 // --- Post-quantum key retrieval (ML-DSA-65 + ML-KEM-768) ---
 
 // retrievePQSeed reads the PQ master seed from ~/.ssh-sync/keypair.

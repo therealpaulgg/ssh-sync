@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -177,18 +176,6 @@ func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
 	return true, nil
 }
 
-func getPubkeyFile() (*os.File, error) {
-	user, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	pubkeyFile, err := os.Open(filepath.Join(user.HomeDir, ".ssh-sync", "keypair.pub"))
-	if err != nil {
-		return nil, err
-	}
-	return pubkeyFile, nil
-}
-
 func createMasterKey() ([]byte, error) {
 	masterKey := make([]byte, 32)
 	_, err := rand.Read(masterKey)
@@ -250,22 +237,17 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	}
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
+	var pubkeyPEM []byte
 	if classic {
-		pubkeyFile, err := getPubkeyFile()
-		if err != nil {
-			return err
-		}
-		defer pubkeyFile.Close()
-		fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
-		io.Copy(fileWriter, pubkeyFile)
+		pubkeyPEM, err = utils.BuildECPublicKeyPEM()
 	} else {
-		sigPubPEM, err := utils.BuildMLDSAPublicKeyPEM()
-		if err != nil {
-			return err
-		}
-		fileWriter, _ := multipartWriter.CreateFormFile("key", "keypair.pub")
-		fileWriter.Write(sigPubPEM)
+		pubkeyPEM, err = utils.BuildMLDSAPublicKeyPEM()
 	}
+	if err != nil {
+		return err
+	}
+	fileWriter, _ := multipartWriter.CreateFormFile("key", "keypair.pub")
+	fileWriter.Write(pubkeyPEM)
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.Close()
@@ -349,21 +331,14 @@ func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 		}
 	}
 	saveProfile(username, machineName, *serverUrl)
-	// Send public key(s) to server via WebSocket.
-	// PublicKey is always the signing/identity key.
-	// EncapsulationKey is only set for PQ — server relays it to Machine A for key exchange.
+
 	var pubKeyMsg dto.PublicKeyDto
 	if classic {
-		f, err := getPubkeyFile()
+		pubkeyPEM, err := utils.BuildECPublicKeyPEM()
 		if err != nil {
 			return err
 		}
-		defer f.Close()
-		pubkeyPayload, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		pubKeyMsg.PublicKey = pubkeyPayload
+		pubKeyMsg.PublicKey = pubkeyPEM
 	} else {
 		sigPubPEM, err := utils.BuildMLDSAPublicKeyPEM()
 		if err != nil {
