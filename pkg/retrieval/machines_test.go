@@ -14,7 +14,6 @@ import (
 
 func TestGetMachines(t *testing.T) {
 	// Arrange
-	mockMasterKey(t)
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode([]dto.MachineDto{
@@ -36,7 +35,6 @@ func TestGetMachines(t *testing.T) {
 
 func TestDeleteMachine(t *testing.T) {
 	// Arrange
-	mockMasterKey(t)
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -52,7 +50,6 @@ func TestDeleteMachine(t *testing.T) {
 
 func TestDeleteMachineDoesNotExist(t *testing.T) {
 	// Arrange
-	mockMasterKey(t)
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
