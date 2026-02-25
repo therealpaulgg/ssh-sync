@@ -11,7 +11,8 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-// hkdfSaltSize is the HKDF salt length, equal to HashLen (SHA-256 output size) per RFC 5869.
+// hkdfSaltSize is the HKDF salt length, equal to HashLen (SHA-256 output size) per RFC 5869 §3.1.
+// https://datatracker.ietf.org/doc/html/rfc5869#section-3.1
 const hkdfSaltSize = sha256.Size
 
 // DecryptMLKEM decrypts data encrypted with EncryptMLKEM.

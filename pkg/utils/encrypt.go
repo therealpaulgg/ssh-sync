@@ -60,7 +60,8 @@ func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, erro
 	// 1. ML-KEM-768 encapsulation → shared secret
 	sharedSecret, kemCiphertext := ek.Encapsulate()
 
-	// 2. Generate random HKDF salt (HashLen bytes per RFC 5869)
+	// 2. Generate random HKDF salt (HashLen bytes per RFC 5869 §3.1)
+	// https://datatracker.ietf.org/doc/html/rfc5869#section-3.1
 	salt := make([]byte, sha256.Size)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return nil, fmt.Errorf("generating HKDF salt: %w", err)
