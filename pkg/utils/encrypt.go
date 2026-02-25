@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/mlkem"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/pem"
 	"fmt"
@@ -54,27 +55,34 @@ func Encrypt(b []byte) ([]byte, error) {
 }
 
 // EncryptMLKEM encrypts data using ML-KEM-768 key encapsulation + AES-256-GCM.
-// Output format: [1088 bytes ML-KEM ct][12 bytes nonce][AES-GCM ct+tag]
+// Output format: [1088 bytes ML-KEM ct][32 bytes HKDF salt][12 bytes nonce][AES-GCM ct+tag]
 func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, error) {
 	// 1. ML-KEM-768 encapsulation → shared secret
 	sharedSecret, kemCiphertext := ek.Encapsulate()
 
-	// 2. Derive AES-256 key via HKDF
-	hkdfReader := hkdf.New(sha256.New, sharedSecret, nil, []byte("ssh-sync-pq-v1"))
+	// 2. Generate random HKDF salt (HashLen bytes per RFC 5869)
+	salt := make([]byte, sha256.Size)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return nil, fmt.Errorf("generating HKDF salt: %w", err)
+	}
+
+	// 3. Derive AES-256 key via HKDF
+	hkdfReader := hkdf.New(sha256.New, sharedSecret, salt, []byte("ssh-sync-pq-v1"))
 	aesKey := make([]byte, 32)
 	if _, err := io.ReadFull(hkdfReader, aesKey); err != nil {
 		return nil, fmt.Errorf("deriving AES key: %w", err)
 	}
 
-	// 3. AES-256-GCM encrypt; nonceAndCiphertext = [nonce][ciphertext+tag]
+	// 4. AES-256-GCM encrypt; nonceAndCiphertext = [nonce][ciphertext+tag]
 	nonceAndCiphertext, err := aesGCMEncrypt(aesKey, plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("AES-GCM encryption: %w", err)
 	}
 
-	// 4. Assemble output: [ML-KEM ct][nonce][AES-GCM ct+tag]
-	result := make([]byte, 0, len(kemCiphertext)+len(nonceAndCiphertext))
+	// 5. Assemble output: [ML-KEM ct][HKDF salt][nonce][AES-GCM ct+tag]
+	result := make([]byte, 0, len(kemCiphertext)+len(salt)+len(nonceAndCiphertext))
 	result = append(result, kemCiphertext...)
+	result = append(result, salt...)
 	result = append(result, nonceAndCiphertext...)
 	return result, nil
 }
