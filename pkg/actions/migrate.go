@@ -26,7 +26,6 @@ func Migrate(c *cli.Context) error {
 		return nil
 	}
 
-	// Check current key format
 	format, err := utils.DetectKeyFormat()
 	if err != nil {
 		return fmt.Errorf("detecting key format: %w", err)
@@ -60,22 +59,18 @@ func Migrate(c *cli.Context) error {
 		return nil
 	}
 
-	// Step 1: Decrypt the master key using the EC key
 	fmt.Println("Decrypting master key with current EC keypair...")
 	masterKey, err := utils.RetrieveMasterKey()
 	if err != nil {
 		return fmt.Errorf("retrieving master key: %w", err)
 	}
 
-	// Step 2: Get a JWT token signed with the OLD key BEFORE we overwrite it.
-	// The server still has our EC public key and will verify against it.
 	fmt.Println("Authenticating with server using current EC key...")
 	token, err := utils.GetToken()
 	if err != nil {
 		return fmt.Errorf("getting auth token: %w", err)
 	}
 
-	// Step 3: Back up old key files
 	u, err := user.Current()
 	if err != nil {
 		return err
@@ -89,14 +84,12 @@ func Migrate(c *cli.Context) error {
 		return fmt.Errorf("backing up master_key: %w", err)
 	}
 
-	// Step 4: Generate new PQ keypair
 	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
 	if err := generateKey(); err != nil {
 		rollbackMigration(sshSyncDir)
 		return fmt.Errorf("generating PQ keys: %w", err)
 	}
 
-	// Step 5: Re-encrypt master key with the PQ key
 	fmt.Println("Re-encrypting master key with ML-KEM-768...")
 	encryptedMasterKey, err := utils.Encrypt(masterKey)
 	if err != nil {
@@ -108,14 +101,12 @@ func Migrate(c *cli.Context) error {
 		return fmt.Errorf("saving re-encrypted master key: %w", err)
 	}
 
-	// Step 6: Upload the new public key to the server using the pre-obtained token
 	fmt.Println("Uploading new public key to server...")
 	if err := uploadMigratedKey(token); err != nil {
 		rollbackMigration(sshSyncDir)
 		return fmt.Errorf("uploading new public key: %w", err)
 	}
 
-	// Step 7: Clean up backups
 	os.Remove(filepath.Join(sshSyncDir, "keypair.bak"))
 	os.Remove(filepath.Join(sshSyncDir, "master_key.bak"))
 
@@ -178,7 +169,6 @@ func backupFile(src, dst string) error {
 	return os.WriteFile(dst, data, 0600)
 }
 
-// rollbackMigration restores backup files if migration fails.
 func rollbackMigration(sshSyncDir string) {
 	fmt.Fprintln(os.Stderr, "Migration failed, rolling back...")
 	restoreBackup(filepath.Join(sshSyncDir, "keypair.bak"), filepath.Join(sshSyncDir, "keypair"))
