@@ -15,7 +15,7 @@ import (
 
 // GetToken generates a signed JWT for authenticating with the server.
 // Auto-detects key format:
-//   - Legacy EC: ES512 signed via lestrrat-go/jwx (existing server compat)
+//   - EC: ES512 signed via lestrrat-go/jwx (existing server compat)
 //   - Post-quantum: ML-DSA-65 signed JWT (custom signing)
 func GetToken() (string, error) {
 	format, err := DetectKeyFormat()
@@ -27,12 +27,12 @@ func GetToken() (string, error) {
 	case FormatPostQuantum:
 		return getTokenPQ()
 	default:
-		return getTokenLegacy()
+		return getTokenEC()
 	}
 }
 
-// getTokenLegacy generates a JWT signed with ES512 (ECDSA + SHA-512).
-func getTokenLegacy() (string, error) {
+// getTokenEC generates a JWT signed with ES512 (ECDSA + SHA-512).
+func getTokenEC() (string, error) {
 	profile, err := GetProfile()
 	if err != nil {
 		return "", err

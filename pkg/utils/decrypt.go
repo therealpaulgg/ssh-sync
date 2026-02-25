@@ -61,7 +61,7 @@ func DecryptMLKEM(data []byte, dk *mlkem.DecapsulationKey768) ([]byte, error) {
 }
 
 // Decrypt decrypts data using the local key. Auto-detects key format:
-//   - Legacy EC: JWE with ECDH-ES+A256KW
+//   - Classical EC: JWE with ECDH-ES+A256KW
 //   - Post-quantum: ML-KEM-768 + AES-256-GCM
 func Decrypt(b []byte) ([]byte, error) {
 	format, err := DetectKeyFormat()
@@ -76,8 +76,8 @@ func Decrypt(b []byte) ([]byte, error) {
 			return nil, err
 		}
 		return DecryptMLKEM(b, dk)
-
-	default: // FormatLegacyEC
+	// FormatEC
+	default:
 		key, err := RetrievePrivateKey()
 		if err != nil {
 			return nil, err

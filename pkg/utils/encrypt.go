@@ -40,7 +40,7 @@ func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 }
 
 // Encrypt encrypts data using the local key. Auto-detects key format:
-//   - Legacy EC: JWE with ECDH-ES+A256KW
+//   - Classical EC: JWE with ECDH-ES+A256KW
 //   - Post-quantum: ML-KEM-768 + AES-256-GCM
 func Encrypt(b []byte) ([]byte, error) {
 	format, err := DetectKeyFormat()
@@ -55,8 +55,8 @@ func Encrypt(b []byte) ([]byte, error) {
 			return nil, err
 		}
 		return EncryptMLKEM(b, ek)
-
-	default: // FormatLegacyEC
+	// FormatEC
+	default:
 		key, err := RetrievePublicKey()
 		if err != nil {
 			return nil, err

@@ -15,9 +15,9 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// --- Legacy EC key retrieval (ECDSA / ECDH-ES) ---
+// --- EC key retrieval (ECDSA / ECDH-ES) ---
 
-// RetrievePrivateKey loads a legacy EC private key (JWK) from ~/.ssh-sync/keypair.
+// RetrievePrivateKey loads a EC private key (JWK) from ~/.ssh-sync/keypair.
 func RetrievePrivateKey() (jwk.Key, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -32,7 +32,7 @@ func RetrievePrivateKey() (jwk.Key, error) {
 	return key, err
 }
 
-// RetrievePublicKey loads a legacy EC public key (JWK) from ~/.ssh-sync/keypair.pub.
+// RetrievePublicKey loads a EC public key (JWK) from ~/.ssh-sync/keypair.pub.
 func RetrievePublicKey() (jwk.Key, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -159,7 +159,7 @@ func BuildMLKEMEncapsulationKeyPEM() ([]byte, error) {
 
 // RetrieveMasterKey reads and decrypts the master key from ~/.ssh-sync/master_key.
 // It auto-detects the key format:
-//   - Legacy: JWE encrypted with ECDH-ES+A256KW
+//   - JWE encrypted with ECDH-ES+A256KW
 //   - Post-quantum: ML-KEM-768 + AES-256-GCM
 func RetrieveMasterKey() ([]byte, error) {
 	format, err := DetectKeyFormat()
@@ -188,15 +188,15 @@ func RetrieveMasterKey() ([]byte, error) {
 			return nil, fmt.Errorf("decrypting master key (PQ): %w", err)
 		}
 		return masterKey, nil
-
-	default: // FormatLegacyEC
+	// FormatEC
+	default:
 		privateKey, err := RetrievePrivateKey()
 		if err != nil {
 			return nil, err
 		}
 		masterKey, err := jwe.Decrypt(file, jwe.WithKey(jwa.ECDH_ES_A256KW, privateKey))
 		if err != nil {
-			return nil, fmt.Errorf("decrypting master key (legacy EC): %w", err)
+			return nil, fmt.Errorf("decrypting master key (EC): %w", err)
 		}
 		return masterKey, nil
 	}

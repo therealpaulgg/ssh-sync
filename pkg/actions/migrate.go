@@ -60,7 +60,7 @@ func Migrate(c *cli.Context) error {
 		return nil
 	}
 
-	// Step 1: Decrypt the master key using the legacy EC key
+	// Step 1: Decrypt the master key using the EC key
 	fmt.Println("Decrypting master key with current EC keypair...")
 	masterKey, err := utils.RetrieveMasterKey()
 	if err != nil {
