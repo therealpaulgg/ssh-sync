@@ -29,12 +29,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// generateKey generates a single PQ master seed from which both keypairs
-// are deterministically derived via HKDF:
-//   - ML-DSA-65 for digital signatures (JWT signing)
-//   - ML-KEM-768 for post-quantum key encapsulation
-//
-// Only the seed is stored on disk (keypair). Public keys are derived on demand.
+// generates a PQ master seed, from which ML-DSA and ML-KEM keys may be derived.
+// master seed only is stored to disk
 func generateKey() error {
 	u, err := user.Current()
 	if err != nil {
@@ -64,8 +60,7 @@ func generateKey() error {
 	return nil
 }
 
-// generateKeyClassic generates a classical ECDSA P-256 keypair.
-// This is the original key generation used before post-quantum support.
+// generates an EC public and private key, storing to disk
 func generateKeyClassic() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	pub := &priv.PublicKey
