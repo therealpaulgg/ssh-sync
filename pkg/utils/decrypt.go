@@ -2,46 +2,31 @@ package utils
 
 import (
 	"crypto/mlkem"
-	"crypto/sha256"
 	"fmt"
-	"io"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
-	"golang.org/x/crypto/hkdf"
 )
 
-// hkdfSaltSize is the HKDF salt length, equal to HashLen (SHA-256 output size) per RFC 5869 §3.1.
-// https://datatracker.ietf.org/doc/html/rfc5869#section-3.1
-const hkdfSaltSize = sha256.Size
-
 // DecryptMLKEM decrypts data encrypted with EncryptMLKEM.
-// Input format: [1088 bytes ML-KEM ct][32 bytes HKDF salt][12 bytes nonce][AES-GCM ct+tag]
+// Input format: [1088 bytes ML-KEM ct][12 bytes nonce][AES-GCM ct+tag]
 func DecryptMLKEM(data []byte, dk *mlkem.DecapsulationKey768) ([]byte, error) {
-	if len(data) < mlkemCtSize+hkdfSaltSize {
+	if len(data) < mlkemCtSize {
 		return nil, fmt.Errorf("data too short for ML-KEM ciphertext")
 	}
 
-	// 1. Parse ML-KEM ciphertext and HKDF salt
+	// 1. Parse ML-KEM ciphertext
 	kemCiphertext := data[:mlkemCtSize]
-	salt := data[mlkemCtSize : mlkemCtSize+hkdfSaltSize]
-	remainder := data[mlkemCtSize+hkdfSaltSize:]
+	remainder := data[mlkemCtSize:]
 
-	// 2. ML-KEM-768 decapsulation → shared secret
+	// 2. ML-KEM-768 decapsulation → shared secret (32 bytes, used directly as AES-256 key)
 	sharedSecret, err := dk.Decapsulate(kemCiphertext)
 	if err != nil {
 		return nil, fmt.Errorf("ML-KEM decapsulation failed: %w", err)
 	}
 
-	// 3. Derive AES-256 key via HKDF (same as encrypt)
-	hkdfReader := hkdf.New(sha256.New, sharedSecret, salt, []byte("ssh-sync-pq-v1"))
-	aesKey := make([]byte, 32)
-	if _, err := io.ReadFull(hkdfReader, aesKey); err != nil {
-		return nil, fmt.Errorf("deriving AES key: %w", err)
-	}
-
-	// 4. AES-256-GCM decrypt
-	plaintext, err := aesGCMDecrypt(aesKey, remainder)
+	// 3. AES-256-GCM decrypt
+	plaintext, err := aesGCMDecrypt(sharedSecret, remainder)
 	if err != nil {
 		return nil, fmt.Errorf("AES-GCM decryption failed: %w", err)
 	}

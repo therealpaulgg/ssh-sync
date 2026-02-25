@@ -2,16 +2,12 @@ package utils
 
 import (
 	"crypto/mlkem"
-	"crypto/rand"
-	"crypto/sha256"
 	"encoding/pem"
 	"fmt"
-	"io"
 
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/lestrrat-go/jwx/v2/jwk"
-	"golang.org/x/crypto/hkdf"
 )
 
 // ML-KEM-768 ciphertext size.
@@ -55,35 +51,22 @@ func Encrypt(b []byte) ([]byte, error) {
 }
 
 // EncryptMLKEM encrypts data using ML-KEM-768 key encapsulation + AES-256-GCM.
-// Output format: [1088 bytes ML-KEM ct][32 bytes HKDF salt][12 bytes nonce][AES-GCM ct+tag]
+// Output format: [1088 bytes ML-KEM ct][12 bytes nonce][AES-GCM ct+tag]
+// The ML-KEM shared secret is used directly as the AES-256 key; per FIPS 203 it is
+// a uniformly random 256-bit value that does not require further key derivation.
 func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, error) {
-	// 1. ML-KEM-768 encapsulation → shared secret
+	// 1. ML-KEM-768 encapsulation → shared secret (32 bytes, uniformly random)
 	sharedSecret, kemCiphertext := ek.Encapsulate()
 
-	// 2. Generate random HKDF salt (HashLen bytes per RFC 5869 §3.1)
-	// https://datatracker.ietf.org/doc/html/rfc5869#section-3.1
-	salt := make([]byte, sha256.Size)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return nil, fmt.Errorf("generating HKDF salt: %w", err)
-	}
-
-	// 3. Derive AES-256 key via HKDF
-	hkdfReader := hkdf.New(sha256.New, sharedSecret, salt, []byte("ssh-sync-pq-v1"))
-	aesKey := make([]byte, 32)
-	if _, err := io.ReadFull(hkdfReader, aesKey); err != nil {
-		return nil, fmt.Errorf("deriving AES key: %w", err)
-	}
-
-	// 4. AES-256-GCM encrypt; nonceAndCiphertext = [nonce][ciphertext+tag]
-	nonceAndCiphertext, err := aesGCMEncrypt(aesKey, plaintext)
+	// 2. AES-256-GCM encrypt; nonceAndCiphertext = [nonce][ciphertext+tag]
+	nonceAndCiphertext, err := aesGCMEncrypt(sharedSecret, plaintext)
 	if err != nil {
 		return nil, fmt.Errorf("AES-GCM encryption: %w", err)
 	}
 
-	// 5. Assemble output: [ML-KEM ct][HKDF salt][nonce][AES-GCM ct+tag]
-	result := make([]byte, 0, len(kemCiphertext)+len(salt)+len(nonceAndCiphertext))
+	// 3. Assemble output: [ML-KEM ct][nonce][AES-GCM ct+tag]
+	result := make([]byte, 0, len(kemCiphertext)+len(nonceAndCiphertext))
 	result = append(result, kemCiphertext...)
-	result = append(result, salt...)
 	result = append(result, nonceAndCiphertext...)
 	return result, nil
 }
