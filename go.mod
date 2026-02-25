@@ -14,7 +14,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/therealpaulgg/ssh-sync-common v0.0.1
 	github.com/urfave/cli/v2 v2.23.7
-	golang.org/x/crypto v0.21.0
 )
 
 require (
@@ -48,6 +47,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
