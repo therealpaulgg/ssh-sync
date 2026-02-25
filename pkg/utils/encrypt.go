@@ -1,10 +1,7 @@
 package utils
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/mlkem"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/pem"
 	"fmt"
@@ -23,20 +20,7 @@ const mlkemCtSize = 1088
 // Output format: [nonce (12 bytes)][ciphertext + GCM tag]
 // AES-256 is already quantum-resistant (128-bit security against Grover's algorithm).
 func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
-	blockCipher, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if n, err := rand.Read(nonce); err != nil || n != len(nonce) {
-		return nil, err
-	}
-	outBuf := gcm.Seal(nonce, nonce, plaintext, nil)
-	return outBuf, nil
+	return aesGCMEncrypt(key, plaintext)
 }
 
 // Encrypt encrypts data using the local key. Auto-detects key format:
@@ -82,26 +66,16 @@ func EncryptMLKEM(plaintext []byte, ek *mlkem.EncapsulationKey768) ([]byte, erro
 		return nil, fmt.Errorf("deriving AES key: %w", err)
 	}
 
-	// 3. AES-256-GCM encrypt
-	blockCipher, err := aes.NewCipher(aesKey)
+	// 3. AES-256-GCM encrypt; nonceAndCiphertext = [nonce][ciphertext+tag]
+	nonceAndCiphertext, err := aesGCMEncrypt(aesKey, plaintext)
 	if err != nil {
-		return nil, fmt.Errorf("creating AES cipher: %w", err)
+		return nil, fmt.Errorf("AES-GCM encryption: %w", err)
 	}
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, fmt.Errorf("creating GCM: %w", err)
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
-		return nil, fmt.Errorf("generating nonce: %w", err)
-	}
-	aesCiphertext := gcm.Seal(nil, nonce, plaintext, nil)
 
-	// 4. Assemble output: [ML-KEM ct][nonce][AES-GCM ct]
-	result := make([]byte, 0, len(kemCiphertext)+len(nonce)+len(aesCiphertext))
+	// 4. Assemble output: [ML-KEM ct][nonce][AES-GCM ct+tag]
+	result := make([]byte, 0, len(kemCiphertext)+len(nonceAndCiphertext))
 	result = append(result, kemCiphertext...)
-	result = append(result, nonce...)
-	result = append(result, aesCiphertext...)
+	result = append(result, nonceAndCiphertext...)
 	return result, nil
 }
 

@@ -1,9 +1,6 @@
 package utils
 
 import (
-	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/mlkem"
 	"crypto/sha256"
 	"fmt"
@@ -39,21 +36,7 @@ func DecryptMLKEM(data []byte, dk *mlkem.DecapsulationKey768) ([]byte, error) {
 	}
 
 	// 4. AES-256-GCM decrypt
-	blockCipher, err := aes.NewCipher(aesKey)
-	if err != nil {
-		return nil, fmt.Errorf("creating AES cipher: %w", err)
-	}
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, fmt.Errorf("creating GCM: %w", err)
-	}
-	if len(remainder) < gcm.NonceSize() {
-		return nil, fmt.Errorf("data too short for nonce")
-	}
-	nonce := remainder[:gcm.NonceSize()]
-	aesCiphertext := remainder[gcm.NonceSize():]
-
-	plaintext, err := gcm.Open(nil, nonce, aesCiphertext, nil)
+	plaintext, err := aesGCMDecrypt(aesKey, remainder)
 	if err != nil {
 		return nil, fmt.Errorf("AES-GCM decryption failed: %w", err)
 	}
@@ -93,22 +76,5 @@ func Decrypt(b []byte) ([]byte, error) {
 // DecryptWithMasterKey decrypts data using AES-256-GCM with the given master key.
 // Input format: [nonce (12 bytes)][ciphertext + GCM tag]
 func DecryptWithMasterKey(b []byte, key []byte) ([]byte, error) {
-	decryptedBuf := bytes.NewBuffer(nil)
-	blockCipher, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, err
-	}
-	data, err := gcm.Open(nil, b[:gcm.NonceSize()], b[gcm.NonceSize():], nil)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := decryptedBuf.Write(data); err != nil {
-		return nil, err
-	}
-	plaintext := decryptedBuf.Bytes()
-	return plaintext, nil
+	return aesGCMDecrypt(key, b)
 }
