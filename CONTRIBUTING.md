@@ -23,6 +23,15 @@ Please provide a clear description of the problem and solution, including any re
 
 We expect all contributors to adhere to our Code of Conduct. By participating in this project, you agree to abide by its terms.
 
+## AI Use
+
+The use of LLM-generated code is allowed in this project. Some basic guidelines to follow:
+- AI generated code should meet or exceed the quality of human code. **No slop.**
+- Due to the nature of this project heavily using cryptography, it is imperative that LLM generated code is carefully reviewed by a human. AI-assisted reviews can be helpful but human review is mandatory. The code in a pull request is the responsibility of the author and approvers, not the LLM.
+- Human testing and verification is still crucial. This project does not have enough unit/integration/E2E tests (yet) to have fully automated testing for new features. The docker environment setup helps with this.
+- **Humans should have a full understanding of the code being submitted in a PR.** This cannot be overstated enough. It is particularly important for open source projects, where time is limited, and contributions are frequent.
+- We don't require a disclosure that AI was used in code generation. You may choose to disclose that if you wish. Transparency is encouraged.
+
 ## Questions?
 
 If you have any questions about contributing, please feel free to ask in the issue tracker or reach out to the maintainers.
