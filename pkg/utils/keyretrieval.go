@@ -15,9 +15,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-// --- EC key retrieval (ECDSA / ECDH-ES) ---
-
-// RetrievePrivateKey loads a EC private key (JWK) from ~/.ssh-sync/keypair.
 func RetrievePrivateKey() (jwk.Key, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -32,7 +29,6 @@ func RetrievePrivateKey() (jwk.Key, error) {
 	return key, err
 }
 
-// RetrievePublicKey loads a EC public key (JWK) from ~/.ssh-sync/keypair.pub.
 func RetrievePublicKey() (jwk.Key, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -47,7 +43,6 @@ func RetrievePublicKey() (jwk.Key, error) {
 	return key, err
 }
 
-// BuildECPublicKeyPEM returns the EC public key PEM bytes from ~/.ssh-sync/keypair.pub.
 func BuildECPublicKeyPEM() ([]byte, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -57,10 +52,6 @@ func BuildECPublicKeyPEM() ([]byte, error) {
 	return os.ReadFile(p)
 }
 
-// --- Post-quantum key retrieval (ML-DSA-65 + ML-KEM-768) ---
-
-// retrievePQSeed reads the PQ master seed from ~/.ssh-sync/keypair.
-// Returns nil if the keypair file doesn't contain a PQ seed PEM block.
 func retrievePQSeed() ([]byte, error) {
 	u, err := user.Current()
 	if err != nil {
@@ -84,7 +75,6 @@ func retrievePQSeed() ([]byte, error) {
 	return nil, nil
 }
 
-// RetrieveSigningKey loads the ML-DSA-65 private key from the PQ master seed.
 func RetrieveSigningKey() (*mldsa.PrivateKey, error) {
 	seed, err := retrievePQSeed()
 	if err != nil {
@@ -100,7 +90,6 @@ func RetrieveSigningKey() (*mldsa.PrivateKey, error) {
 	return sk, nil
 }
 
-// RetrieveDecapsulationKey loads the ML-KEM-768 decapsulation key from the PQ master seed.
 func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
 	seed, err := retrievePQSeed()
 	if err != nil {
@@ -116,7 +105,6 @@ func RetrieveDecapsulationKey() (*mlkem.DecapsulationKey768, error) {
 	return dk, nil
 }
 
-// RetrieveEncapsulationKey derives the ML-KEM-768 encapsulation key from the PQ master seed.
 func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 	dk, err := RetrieveDecapsulationKey()
 	if err != nil {
@@ -125,7 +113,6 @@ func RetrieveEncapsulationKey() (*mlkem.EncapsulationKey768, error) {
 	return dk.EncapsulationKey(), nil
 }
 
-// BuildMLDSAPublicKeyPEM returns the ML-DSA-65 public key as a PEM-encoded byte slice.
 func BuildMLDSAPublicKeyPEM() ([]byte, error) {
 	seed, err := retrievePQSeed()
 	if err != nil {
@@ -145,7 +132,6 @@ func BuildMLDSAPublicKeyPEM() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// BuildMLKEMEncapsulationKeyPEM returns the ML-KEM-768 encapsulation key as a PEM-encoded byte slice.
 func BuildMLKEMEncapsulationKeyPEM() ([]byte, error) {
 	seed, err := retrievePQSeed()
 	if err != nil {
@@ -165,12 +151,6 @@ func BuildMLKEMEncapsulationKeyPEM() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// --- Format-aware master key retrieval ---
-
-// RetrieveMasterKey reads and decrypts the master key from ~/.ssh-sync/master_key.
-// It auto-detects the key format:
-//   - JWE encrypted with ECDH-ES+A256KW
-//   - Post-quantum: ML-KEM-768 + AES-256-GCM
 func RetrieveMasterKey() ([]byte, error) {
 	format, err := DetectKeyFormat()
 	if err != nil {
@@ -198,7 +178,6 @@ func RetrieveMasterKey() ([]byte, error) {
 			return nil, fmt.Errorf("decrypting master key (PQ): %w", err)
 		}
 		return masterKey, nil
-	// FormatEC
 	default:
 		privateKey, err := RetrievePrivateKey()
 		if err != nil {

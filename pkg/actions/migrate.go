@@ -59,21 +59,18 @@ func Migrate(c *cli.Context) error {
 		return nil
 	}
 
-	// Step 1: Decrypt the master key using the EC key
 	fmt.Println("Decrypting master key with current EC keypair...")
 	masterKey, err := utils.RetrieveMasterKey()
 	if err != nil {
 		return fmt.Errorf("retrieving master key: %w", err)
 	}
 
-	// Step 2: Get a JWT token signed with the OLD key BEFORE we overwrite it.
 	fmt.Println("Authenticating with server using current EC key...")
 	token, err := utils.GetToken()
 	if err != nil {
 		return fmt.Errorf("getting auth token: %w", err)
 	}
 
-	// Step 3: Back up old key files
 	u, err := user.Current()
 	if err != nil {
 		return err
@@ -87,14 +84,12 @@ func Migrate(c *cli.Context) error {
 		return fmt.Errorf("backing up master_key: %w", err)
 	}
 
-	// Step 4: Generate new PQ keypair
 	fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
 	if err := generateKey(); err != nil {
 		rollbackMigration(sshSyncDir)
 		return fmt.Errorf("generating PQ keys: %w", err)
 	}
 
-	// Step 5: Re-encrypt master key with the PQ key
 	fmt.Println("Re-encrypting master key with ML-KEM-768...")
 	encryptedMasterKey, err := utils.Encrypt(masterKey)
 	if err != nil {
@@ -106,14 +101,12 @@ func Migrate(c *cli.Context) error {
 		return fmt.Errorf("saving re-encrypted master key: %w", err)
 	}
 
-	// Step 6: Upload the new public key to the server using the pre-obtained token
 	fmt.Println("Uploading new public key to server...")
 	if err := uploadMigratedKey(token); err != nil {
 		rollbackMigration(sshSyncDir)
 		return fmt.Errorf("uploading new public key: %w", err)
 	}
 
-	// Step 7: Clean up backups
 	os.Remove(filepath.Join(sshSyncDir, "keypair.bak"))
 	os.Remove(filepath.Join(sshSyncDir, "master_key.bak"))
 
@@ -124,9 +117,6 @@ func Migrate(c *cli.Context) error {
 	return nil
 }
 
-// uploadMigratedKey sends the new public key to the server via PUT /api/v1/machines/key.
-// It uses a pre-obtained token (signed with the old key) since the server still has
-// the old public key at this point.
 func uploadMigratedKey(token string) error {
 	profile, err := utils.GetProfile()
 	if err != nil {

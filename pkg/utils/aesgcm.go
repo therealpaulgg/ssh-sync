@@ -7,8 +7,6 @@ import (
 	"fmt"
 )
 
-// aesGCMEncrypt encrypts plaintext with AES-256-GCM using the given key.
-// Output format: [nonce (12 bytes)][ciphertext + GCM tag]
 func aesGCMEncrypt(key, plaintext []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -25,8 +23,6 @@ func aesGCMEncrypt(key, plaintext []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
-// aesGCMDecrypt decrypts data produced by aesGCMEncrypt.
-// Input format: [nonce (12 bytes)][ciphertext + GCM tag]
 func aesGCMDecrypt(key, data []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

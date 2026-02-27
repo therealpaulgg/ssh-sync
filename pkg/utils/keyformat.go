@@ -11,9 +11,7 @@ import (
 type KeyFormat int
 
 const (
-	// FormatEC indicates keys use classical ECDSA P-256 / ECDH-ES.
 	FormatEC KeyFormat = iota
-	// FormatPostQuantum indicates keys use ML-DSA-65 + ML-KEM-768.
 	FormatPostQuantum
 )
 
@@ -48,6 +46,5 @@ func detectKeyFormatFromBytes(data []byte) KeyFormat {
 			return FormatEC
 		}
 	}
-	// Default to EC if unrecognized (shouldn't happen with valid files)
 	return FormatEC
 }

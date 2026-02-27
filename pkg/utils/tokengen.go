@@ -13,10 +13,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
 
-// GetToken generates a signed JWT for authenticating with the server.
-// Auto-detects key format:
-//   - EC: ES512 signed via lestrrat-go/jwx (existing server compat)
-//   - Post-quantum: ML-DSA-65 signed JWT (custom signing)
 func GetToken() (string, error) {
 	format, err := DetectKeyFormat()
 	if err != nil {
@@ -31,7 +27,6 @@ func GetToken() (string, error) {
 	}
 }
 
-// getTokenEC generates a JWT signed with ES512 (ECDSA + SHA-512).
 func getTokenEC() (string, error) {
 	profile, err := GetProfile()
 	if err != nil {
@@ -58,9 +53,6 @@ func getTokenEC() (string, error) {
 	return string(signed), nil
 }
 
-// getTokenPQ generates a JWT signed with ML-DSA-65 (FIPS 204).
-// Uses a custom "MLDSA" algorithm header since JWS doesn't have a
-// standard algorithm identifier for ML-DSA yet.
 func getTokenPQ() (string, error) {
 	profile, err := GetProfile()
 	if err != nil {
@@ -71,7 +63,6 @@ func getTokenPQ() (string, error) {
 		return "", err
 	}
 
-	// Build JWT header
 	header := map[string]string{
 		"alg": "MLDSA",
 		"typ": "JWT",
@@ -81,7 +72,6 @@ func getTokenPQ() (string, error) {
 		return "", fmt.Errorf("marshaling JWT header: %w", err)
 	}
 
-	// Build JWT payload
 	now := time.Now()
 	payload := map[string]interface{}{
 		"iss":      "github.com/therealpaulgg/ssh-sync",
@@ -95,12 +85,10 @@ func getTokenPQ() (string, error) {
 		return "", fmt.Errorf("marshaling JWT payload: %w", err)
 	}
 
-	// Encode header.payload
 	b64Header := base64.RawURLEncoding.EncodeToString(headerJSON)
 	b64Payload := base64.RawURLEncoding.EncodeToString(payloadJSON)
 	signingInput := b64Header + "." + b64Payload
 
-	// Sign with ML-DSA
 	sig, err := sk.Sign(rand.Reader, []byte(signingInput), nil)
 	if err != nil {
 		return "", fmt.Errorf("ML-DSA signing: %w", err)
@@ -110,10 +98,7 @@ func getTokenPQ() (string, error) {
 	return signingInput + "." + b64Sig, nil
 }
 
-// VerifyMLDSAJWT verifies a JWT signed with ML-DSA.
-// This is provided for completeness; the server performs verification.
 func VerifyMLDSAJWT(tokenStr string, pk *mldsa.PublicKey) (bool, error) {
-	// Split into header.payload.signature
 	parts := splitJWT(tokenStr)
 	if len(parts) != 3 {
 		return false, fmt.Errorf("invalid JWT format")

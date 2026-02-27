@@ -28,8 +28,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// generates a PQ master seed, from which ML-DSA and ML-KEM keys may be derived.
-// master seed only is stored to disk
 func generateKey() error {
 	u, err := user.Current()
 	if err != nil {
@@ -59,7 +57,6 @@ func generateKey() error {
 	return nil
 }
 
-// generates an EC public and private key, storing to disk
 func generateKeyClassic() error {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	pub := &priv.PublicKey
