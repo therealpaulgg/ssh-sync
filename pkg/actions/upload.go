@@ -19,7 +19,20 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+type uploadOptions struct {
+	Path           string
+	NonInteractive bool
+}
+
 func Upload(c *cli.Context) error {
+	opts := uploadOptions{
+		Path:           c.String("path"),
+		NonInteractive: isNonInteractive(c),
+	}
+	return runUpload(opts)
+}
+
+func runUpload(opts uploadOptions) error {
 	setup, err := utils.CheckIfSetup()
 	if err != nil {
 		return err
@@ -69,7 +82,7 @@ func Upload(c *cli.Context) error {
 	}
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
-	p := c.String("path")
+	p := opts.Path
 	if p == "" {
 		user, err := user.Current()
 		if err != nil {
@@ -108,6 +121,10 @@ func Upload(c *cli.Context) error {
 			// Only compare if server has timestamp information
 			if serverKey.UpdatedAt != nil && serverKey.UpdatedAt.After(localModTime) {
 				// Server key is newer, prompt user
+				if opts.NonInteractive {
+					fmt.Fprintf(os.Stderr, "Non-interactive mode: skipping %s because server copy is newer.\n", file.Name())
+					continue
+				}
 				shouldOverwrite, err := utils.PromptOverwriteNewerKey(file.Name(), localModTime, *serverKey.UpdatedAt)
 				if err != nil {
 					return err
