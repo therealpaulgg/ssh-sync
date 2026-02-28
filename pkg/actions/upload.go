@@ -190,6 +190,15 @@ func Upload(c *cli.Context) error {
 	if res2.StatusCode != http.StatusOK {
 		return errors.New("failed to upload data. status code: " + strconv.Itoa(res2.StatusCode))
 	}
+	var uploadedKeys []dto.KeyDto
+	if err := json.NewDecoder(res2.Body).Decode(&uploadedKeys); err == nil {
+		for _, key := range uploadedKeys {
+			if key.UpdatedAt != nil {
+				localPath := filepath.Join(p, key.Filename)
+				_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
+			}
+		}
+	}
 	fmt.Println("Successfully uploaded keys.")
 	return nil
 }
