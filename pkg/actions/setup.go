@@ -243,8 +243,13 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	if err != nil {
 		return err
 	}
-	fileWriter, _ := multipartWriter.CreateFormFile("key", "keypair.pub")
-	fileWriter.Write(pubkeyPEM)
+	fileWriter, err := multipartWriter.CreateFormFile("key", "keypair.pub")
+	if err != nil {
+		return err
+	}
+	if _, err := fileWriter.Write(pubkeyPEM); err != nil {
+		return err
+	}
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.Close()

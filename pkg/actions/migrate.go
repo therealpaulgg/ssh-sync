@@ -177,7 +177,10 @@ func rollbackMigration(sshSyncDir string) {
 func restoreBackup(backupPath, originalPath string) {
 	data, err := os.ReadFile(backupPath)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: could not read backup %s: %v\n", backupPath, err)
 		return
 	}
-	_ = os.WriteFile(originalPath, data, 0600)
+	if err := os.WriteFile(originalPath, data, 0600); err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: could not restore %s: %v\n", originalPath, err)
+	}
 }
