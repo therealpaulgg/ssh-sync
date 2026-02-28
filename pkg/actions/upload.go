@@ -83,7 +83,7 @@ func Upload(c *cli.Context) error {
 	}
 	hosts := []models.Host{}
 	for _, file := range data {
-		if file.IsDir() || file.Name() == "authorized_keys" || file.Name() == "known_hosts" {
+		if file.IsDir() || isSkippedBinaryUpload(file.Name()) {
 			continue
 		} else if file.Name() == "config" {
 			hosts, err = utils.ParseConfig()
@@ -201,4 +201,15 @@ func Upload(c *cli.Context) error {
 	}
 	fmt.Println("Successfully uploaded keys.")
 	return nil
+}
+
+// isSkippedBinaryUpload reports whether a filename must not be sent as an
+// encrypted binary key. known_hosts is synced as structured entries;
+// authorized_keys must never leave the local machine.
+func isSkippedBinaryUpload(name string) bool {
+	switch name {
+	case "known_hosts", "authorized_keys":
+		return true
+	}
+	return false
 }
