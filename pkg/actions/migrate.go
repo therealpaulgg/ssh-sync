@@ -109,6 +109,9 @@ func Migrate(c *cli.Context) error {
 
 	os.Remove(filepath.Join(sshSyncDir, "keypair.bak"))
 	os.Remove(filepath.Join(sshSyncDir, "master_key.bak"))
+	if err := removeLegacyPublicKey(sshSyncDir); err != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: could not remove legacy keypair.pub: %v\n", err)
+	}
 
 	fmt.Println()
 	fmt.Println("Migration complete! Your keys are now using post-quantum cryptography.")
@@ -183,4 +186,11 @@ func restoreBackup(backupPath, originalPath string) {
 	if err := os.WriteFile(originalPath, data, 0600); err != nil {
 		fmt.Fprintf(os.Stderr, "WARNING: could not restore %s: %v\n", originalPath, err)
 	}
+}
+
+func removeLegacyPublicKey(sshSyncDir string) error {
+	if err := os.Remove(filepath.Join(sshSyncDir, "keypair.pub")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }
