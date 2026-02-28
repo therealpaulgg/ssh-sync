@@ -78,7 +78,7 @@ func buildPQToken(sk *mldsa.PrivateKey, username, machineName string) (string, e
 	}
 
 	now := time.Now()
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"iss":      "github.com/therealpaulgg/ssh-sync",
 		"iat":      now.Add(-1 * time.Minute).Unix(),
 		"exp":      now.Add(2 * time.Minute).Unix(),
@@ -102,4 +102,3 @@ func buildPQToken(sk *mldsa.PrivateKey, username, machineName string) (string, e
 
 	return signingInput + "." + b64Sig, nil
 }
-
