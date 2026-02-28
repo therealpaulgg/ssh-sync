@@ -54,7 +54,7 @@ func main() {
 			},
 			{
 				Name:        "sync",
-				Description: "Upload first, then download from the server",
+				Description: "Synchronize keys by uploading or downloading first based on freshness",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "path",
@@ -65,14 +65,6 @@ func main() {
 						Name:    "safe-mode",
 						Aliases: []string{"s"},
 						Usage:   "Safe mode will sync to an alternate directory (.ssh-sync-data)",
-					},
-					&cli.BoolFlag{
-						Name:  "no-upload",
-						Usage: "Skip uploading before downloading",
-					},
-					&cli.BoolFlag{
-						Name:  "no-download",
-						Usage: "Skip downloading after uploading",
 					},
 				},
 				Action: actions.Sync,

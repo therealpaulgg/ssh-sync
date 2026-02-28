@@ -159,13 +159,13 @@ This command fetches your SSH keys from the server, setting up your SSH environm
 
 ### Bidirectional Sync
 
-To upload your local keys first and then download the reconciled server state back to disk, run:
+To synchronize in a single step, run:
 
 ```shell
 ssh-sync sync
 ```
 
-Use `--path` (or `-p`) to point at a custom SSH directory for the upload step, and `--safe-mode` (or `-s`) to download into `.ssh-sync-data` instead of your primary `.ssh` directory. For one-way runs, add `--no-upload` or `--no-download` to skip a phase.
+Use `--path` (or `-p`) to point at a custom SSH directory for the upload step, and `--safe-mode` (or `-s`) to download into `.ssh-sync-data` instead of your primary `.ssh` directory. The command checks server timestamps: if the server copy of a key is newer or missing locally, it downloads first, otherwise it uploads first, then completes the opposite direction.
 
 #### Conflict Resolution
 
