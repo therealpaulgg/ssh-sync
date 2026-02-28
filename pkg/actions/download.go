@@ -54,6 +54,19 @@ func Download(c *cli.Context) error {
 			return err
 		}
 	}
+	if len(data.KnownHosts) > 0 {
+		entries := lo.Map(data.KnownHosts, func(kh dto.KnownHostDto, _ int) models.KnownHostEntry {
+			return models.KnownHostEntry{
+				HostPattern: kh.HostPattern,
+				KeyType:     kh.KeyType,
+				KeyData:     kh.KeyData,
+				Marker:      kh.Marker,
+			}
+		})
+		if err := utils.WriteKnownHosts(entries, directory); err != nil {
+			return err
+		}
+	}
 
 	err = checkForDeletedKeys(data.Keys, directory)
 
@@ -76,7 +89,7 @@ func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 		if d.IsDir() {
 			return nil
 		}
-		if d.Name() == "config" || d.Name() == "authorized_keys" {
+		if d.Name() == "config" || d.Name() == "authorized_keys" || d.Name() == "known_hosts" {
 			return nil
 		}
 		_, exists := lo.Find(keys, func(key dto.KeyDto) bool {
