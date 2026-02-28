@@ -165,7 +165,7 @@ To synchronize in a single step, run:
 ssh-sync sync
 ```
 
-Use `--path` (or `-p`) to point at a custom SSH directory for the upload step, and `--safe-mode` (or `-s`) to download into `.ssh-sync-data` instead of your primary `.ssh` directory. The command checks server timestamps: if the server copy of a key is newer or missing locally, it downloads first, otherwise it uploads first, then completes the opposite direction.
+Use `--path` (or `-p`) to point at a custom SSH directory for the upload step, and `--safe-mode` (or `-s`) to download into `.ssh-sync-data` instead of your primary `.ssh` directory. The command uploads first to preserve local-only keys, then downloads to reconcile with the server (including deletion prompts).
 
 #### Conflict Resolution
 
