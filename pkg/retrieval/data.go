@@ -1,10 +1,14 @@
 package retrieval
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
@@ -69,6 +73,40 @@ func (c RetrievalClient) DeleteKey(profile *models.Profile, key dto.KeyDto) erro
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to delete data. status code: " + strconv.Itoa(res.StatusCode))
+	}
+	return nil
+}
+
+func (c RetrievalClient) UploadData(profile *models.Profile, path string, multipartWriter *multipart.Writer, multipartBody bytes.Buffer) error {
+	token, err := c.GetToken()
+	if err != nil {
+		return err
+	}
+	uploadURL := profile.ServerUrl
+	uploadURL.Path = "/api/v1/data"
+	req, err := http.NewRequest("POST", uploadURL.String(), &multipartBody)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", multipartWriter.FormDataContentType())
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return errors.New("failed to upload data. status code: " + strconv.Itoa(res.StatusCode))
+	}
+
+	var uploadedKeys []dto.KeyDto
+	if err := json.NewDecoder(res.Body).Decode(&uploadedKeys); err == nil {
+		for _, key := range uploadedKeys {
+			if key.UpdatedAt != nil {
+				localPath := filepath.Join(path, key.Filename)
+				_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
+			}
+		}
 	}
 	return nil
 }

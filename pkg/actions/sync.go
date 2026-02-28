@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/samber/lo"
@@ -100,11 +98,6 @@ func Sync(c *cli.Context) error {
 
 	// Apply uploads
 	if len(toUpload) > 0 {
-		token, err := utils.GetToken()
-		if err != nil {
-			return err
-		}
-
 		var multipartBody bytes.Buffer
 		multipartWriter := multipart.NewWriter(&multipartBody)
 		for _, f := range toUpload {
@@ -131,31 +124,9 @@ func Sync(c *cli.Context) error {
 		}
 		multipartWriter.Close()
 
-		uploadURL := profile.ServerUrl
-		uploadURL.Path = "/api/v1/data"
-		req, err := http.NewRequest("POST", uploadURL.String(), &multipartBody)
-		if err != nil {
+		client := retrieval.NewRetrievalClient()
+		if err = client.UploadData(profile, p, multipartWriter, multipartBody); err != nil {
 			return err
-		}
-		req.Header.Add("Authorization", "Bearer "+token)
-		req.Header.Add("Content-Type", multipartWriter.FormDataContentType())
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return err
-		}
-		defer res.Body.Close()
-		if res.StatusCode != http.StatusOK {
-			return errors.New("failed to upload data. status code: " + strconv.Itoa(res.StatusCode))
-		}
-
-		var uploadedKeys []dto.KeyDto
-		if err := json.NewDecoder(res.Body).Decode(&uploadedKeys); err == nil {
-			for _, key := range uploadedKeys {
-				if key.UpdatedAt != nil {
-					localPath := filepath.Join(p, key.Filename)
-					_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
-				}
-			}
 		}
 	}
 
