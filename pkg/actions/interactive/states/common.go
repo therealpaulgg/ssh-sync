@@ -54,10 +54,3 @@ func footerView(info string, width int) string {
 	line := strings.Repeat("─", max(0, width-lipgloss.Width(infoStyle)-4))
 	return lipgloss.JoinHorizontal(lipgloss.Center, BasicColorStyle.Render(line), infoStyle)
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

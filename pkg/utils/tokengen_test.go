@@ -24,7 +24,7 @@ func generateTestSigningKey(t *testing.T) *mldsa.PrivateKey {
 	return sk
 }
 
-func decodeTokenParts(t *testing.T, token string) (header, payload map[string]interface{}, sigBytes []byte) {
+func decodeTokenParts(t *testing.T, token string) (header, payload map[string]any, sigBytes []byte) {
 	t.Helper()
 	parts := strings.SplitN(token, ".", 3)
 	require.Len(t, parts, 3, "JWT must have three dot-separated parts")
