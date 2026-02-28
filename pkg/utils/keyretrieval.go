@@ -126,7 +126,7 @@ func BuildMLDSAPublicKeyPEM() ([]byte, error) {
 		return nil, fmt.Errorf("deriving ML-DSA key for public key PEM: %w", err)
 	}
 	var buf bytes.Buffer
-	if err := pem.Encode(&buf, &pem.Block{Type: "MLDSA PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
+	if err := pem.Encode(&buf, &pem.Block{Type: "ML-DSA PUBLIC KEY", Bytes: sk.PublicKey().Bytes()}); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
