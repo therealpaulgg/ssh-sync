@@ -177,6 +177,24 @@ If you simply want to download your keys to a temporary directory, and not inter
 ssh-sync download --safe-mode
 ```
 
+### Syncing and automation
+
+Run a full reconciliation (upload then download) with:
+
+```shell
+ssh-sync sync
+```
+
+Use `--path` to point at a different SSH directory, `--safe-mode` to download into `.ssh-sync-data`, and `--non-interactive` (or run without a TTY) to skip prompts. In non-interactive mode ssh-sync logs conflicts to stderr instead of overwriting or deleting files.
+
+To keep machines up to date automatically, start the built-in daemon:
+
+```shell
+ssh-sync daemon --interval 1h
+```
+
+The daemon reruns `ssh-sync sync` on the given interval (default: hourly). Combine it with `--non-interactive` for unattended use.
+
 ### Challenge Response
 
 If setting up a new machine with an existing account, use:

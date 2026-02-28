@@ -61,7 +61,7 @@ func WriteConfig(hosts []models.Host, sshDirectory string) error {
 	return nil
 }
 
-func WriteKey(key []byte, filename string, sshDirectory string) error {
+func WriteKey(key []byte, filename string, sshDirectory string, nonInteractive bool) error {
 	p, err := GetAndCreateSshDirectory(sshDirectory)
 	if err != nil {
 		return err
@@ -75,6 +75,10 @@ func WriteKey(key []byte, filename string, sshDirectory string) error {
 			return err
 		}
 		if string(existingData) != string(key) {
+			if nonInteractive {
+				fmt.Fprintf(os.Stderr, "Non-interactive mode: skipping %s because local file differs from server copy.\n", filename)
+				return nil
+			}
 			var answer string
 			scanner := bufio.NewScanner(os.Stdin)
 			fmt.Printf("diff detected for %s.\n", filename)

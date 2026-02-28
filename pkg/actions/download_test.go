@@ -17,7 +17,7 @@ func TestCheckForDeletedKeysSkipsAuthorizedKeys(t *testing.T) {
 		t.Fatalf("failed to write authorized_keys: %v", err)
 	}
 
-	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir); err != nil {
+	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir, false); err != nil {
 		t.Fatalf("checkForDeletedKeys returned error: %v", err)
 	}
 
@@ -34,7 +34,7 @@ func TestCheckForDeletedKeysSkipsConfig(t *testing.T) {
 		t.Fatalf("failed to write config: %v", err)
 	}
 
-	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir); err != nil {
+	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir, false); err != nil {
 		t.Fatalf("checkForDeletedKeys returned error: %v", err)
 	}
 
@@ -51,12 +51,29 @@ func TestCheckForDeletedKeysSkipsKnownHosts(t *testing.T) {
 		t.Fatalf("failed to write known_hosts: %v", err)
 	}
 
-	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir); err != nil {
+	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir, false); err != nil {
 		t.Fatalf("checkForDeletedKeys returned error: %v", err)
 	}
 
 	if _, err := os.Stat(knownHostsPath); err != nil {
 		t.Fatalf("known_hosts should remain untouched, got error: %v", err)
+	}
+}
+
+func TestCheckForDeletedKeysNonInteractiveSkipsDeletion(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	extraKey := filepath.Join(tmpDir, "id_extra")
+	if err := os.WriteFile(extraKey, []byte("dummy"), 0600); err != nil {
+		t.Fatalf("failed to write extra key: %v", err)
+	}
+
+	if err := checkForDeletedKeys([]dto.KeyDto{}, tmpDir, true); err != nil {
+		t.Fatalf("checkForDeletedKeys returned error: %v", err)
+	}
+
+	if _, err := os.Stat(extraKey); err != nil {
+		t.Fatalf("key should remain untouched in non-interactive mode, got error: %v", err)
 	}
 }
 

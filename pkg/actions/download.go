@@ -15,6 +15,19 @@ import (
 )
 
 func Download(c *cli.Context) error {
+	opts := downloadOptions{
+		SafeMode:       c.Bool("safe-mode"),
+		NonInteractive: isNonInteractive(c),
+	}
+	return runDownload(opts)
+}
+
+type downloadOptions struct {
+	SafeMode       bool
+	NonInteractive bool
+}
+
+func runDownload(opts downloadOptions) error {
 	setup, err := utils.CheckIfSetup()
 	if err != nil {
 		return err
@@ -32,9 +45,8 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	isSafeMode := c.Bool("safe-mode")
 	var directory string
-	if isSafeMode {
+	if opts.SafeMode {
 		fmt.Println("Executing in safe mode (keys writing to .ssh-sync-data)")
 		directory = ".ssh-sync-data"
 	} else {
@@ -53,7 +65,7 @@ func Download(c *cli.Context) error {
 		if isReservedFilename(key.Filename) {
 			continue
 		}
-		if err := utils.WriteKey(key.Data, key.Filename, directory); err != nil {
+		if err := utils.WriteKey(key.Data, key.Filename, directory, opts.NonInteractive); err != nil {
 			return err
 		}
 	}
@@ -71,7 +83,7 @@ func Download(c *cli.Context) error {
 		}
 	}
 
-	err = checkForDeletedKeys(data.Keys, directory)
+	err = checkForDeletedKeys(data.Keys, directory, opts.NonInteractive)
 
 	if err != nil {
 		return err
@@ -80,7 +92,7 @@ func Download(c *cli.Context) error {
 	return nil
 }
 
-func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
+func checkForDeletedKeys(keys []dto.KeyDto, directory string, nonInteractive bool) error {
 	sshDir, err := utils.GetAndCreateSshDirectory(directory)
 	if err != nil {
 		return err
@@ -99,6 +111,10 @@ func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 			return key.Filename == d.Name()
 		})
 		if exists {
+			return nil
+		}
+		if nonInteractive {
+			fmt.Fprintf(os.Stderr, "Non-interactive mode: %s exists locally but not on server; leaving untouched.\n", d.Name())
 			return nil
 		}
 		fmt.Printf("Key %s detected on your filesystem that is not in the database. Delete? (y/n): ", d.Name())
