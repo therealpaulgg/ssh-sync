@@ -14,6 +14,7 @@ import (
 
 func TestGetMachines(t *testing.T) {
 	// Arrange
+	client, _ := newTestClient(t)
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode([]dto.MachineDto{
@@ -26,7 +27,7 @@ func TestGetMachines(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
-	machines, err := GetMachines(profile)
+	machines, err := client.GetMachines(profile)
 	// Assert
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(machines))
@@ -35,6 +36,7 @@ func TestGetMachines(t *testing.T) {
 
 func TestDeleteMachine(t *testing.T) {
 	// Arrange
+	client, _ := newTestClient(t)
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -43,13 +45,14 @@ func TestDeleteMachine(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
-	err := DeleteMachine(profile, "test")
+	err := client.DeleteMachine(profile, "test")
 	// Assert
 	assert.Nil(t, err)
 }
 
 func TestDeleteMachineDoesNotExist(t *testing.T) {
 	// Arrange
+	client, _ := newTestClient(t)
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -58,7 +61,7 @@ func TestDeleteMachineDoesNotExist(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
-	err := DeleteMachine(profile, "test")
+	err := client.DeleteMachine(profile, "test")
 	// Assert
 	assert.NotNil(t, err)
 }

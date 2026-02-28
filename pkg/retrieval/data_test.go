@@ -16,27 +16,9 @@ import (
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
 
-// testMasterKey returns a random 32-byte AES key and installs it as the
-// mock master key for the duration of the test.
-func mockMasterKey(t *testing.T) []byte {
-	t.Helper()
-	key := make([]byte, 32)
-	_, err := rand.Read(key)
-	require.NoError(t, err)
-	orig := retrieveMasterKey
-	retrieveMasterKey = func() ([]byte, error) { return key, nil }
-	t.Cleanup(func() { retrieveMasterKey = orig })
-
-	origToken := getToken
-	getToken = func() (string, error) { return "test-token", nil }
-	t.Cleanup(func() { getToken = origToken })
-
-	return key
-}
-
 func TestDownloadData(t *testing.T) {
 	// Arrange
-	masterKey := mockMasterKey(t)
+	client, masterKey := newTestClient(t)
 	plaintext := []byte("test key contents")
 	encryptedKey, err := utils.EncryptWithMasterKey(plaintext, masterKey)
 	require.NoError(t, err)
@@ -69,7 +51,7 @@ func TestDownloadData(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
-	data, err := GetUserData(profile)
+	data, err := client.GetUserData(profile)
 	// Assert
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(data.Keys))
@@ -78,7 +60,7 @@ func TestDownloadData(t *testing.T) {
 
 func TestDeleteKey(t *testing.T) {
 	// Arrange
-	mockMasterKey(t)
+	client, _ := newTestClient(t)
 	key := dto.KeyDto{
 		ID:       uuid.New(),
 		UserID:   uuid.New(),
@@ -92,7 +74,18 @@ func TestDeleteKey(t *testing.T) {
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
-	err := DeleteKey(profile, key)
+	err := client.DeleteKey(profile, key)
 	// Assert
 	assert.Nil(t, err)
+}
+
+func newTestClient(t *testing.T) (RetrievalClient, []byte) {
+	t.Helper()
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	return RetrievalClient{
+		GetToken:          func() (string, error) { return "test-token", nil },
+		RetrieveMasterKey: func() ([]byte, error) { return key, nil },
+	}, key
 }

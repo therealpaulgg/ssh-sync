@@ -22,7 +22,8 @@ func ListMachines(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	machines, err := retrieval.GetMachines(profile)
+	client := retrieval.NewRetrievalClient()
+	machines, err := client.GetMachines(profile)
 	if err != nil {
 		return err
 	}
