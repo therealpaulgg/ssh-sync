@@ -1,5 +1,7 @@
 filippo.io/mldsa v0.0.0-20260215214346-43d0283efc3e h1:VsUbObBMxXlc23Eb9VeeJYE4jvTs87qa5RqSN2U5FJU=
 filippo.io/mldsa v0.0.0-20260215214346-43d0283efc3e/go.mod h1:32qQ5yj3R24Eu03iWFWchdC3OB653wPvoepWejkefbY=
+github.com/MakeNowJust/heredoc v1.0.0 h1:cXCdzVdstXyiTqTvfqk9SDHpKNjxuom+DOlyEeQ4pzQ=
+github.com/MakeNowJust/heredoc v1.0.0/go.mod h1:mG5amYoWBHf8vpLOuehzbGGw0EHxpZZ6lCpQ4fNJ8LE=
 github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
 github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
@@ -84,10 +86,6 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/therealpaulgg/ssh-sync-common v0.0.1 h1:jGF8W/mS7YE0Le8jny+qfNYUcTayN1pfsp71QXFC9Ys=
-github.com/therealpaulgg/ssh-sync-common v0.0.1/go.mod h1:eGg17M5ihJpAIJ7RDXot0UDK6K4wRTHciY1rPJolaDU=
-github.com/therealpaulgg/ssh-sync-common v0.0.2 h1:Y6bQSXD175rzwVrVjw046Dq2EaeAP9fbvhc8refd11U=
-github.com/therealpaulgg/ssh-sync-common v0.0.2/go.mod h1:eGg17M5ihJpAIJ7RDXot0UDK6K4wRTHciY1rPJolaDU=
 github.com/therealpaulgg/ssh-sync-common v0.0.4 h1:IFeN6KNyHwiW1KN6shM//V461K8793wKYdhQPr4YzeA=
 github.com/therealpaulgg/ssh-sync-common v0.0.4/go.mod h1:eGg17M5ihJpAIJ7RDXot0UDK6K4wRTHciY1rPJolaDU=
 github.com/urfave/cli/v2 v2.23.7 h1:YHDQ46s3VghFHFf1DdF+Sh7H4RqhcM+t0TmZRJx4oJY=

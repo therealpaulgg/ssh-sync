@@ -250,6 +250,19 @@ func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	if _, err := fileWriter.Write(pubkeyPEM); err != nil {
 		return err
 	}
+	if !classic {
+		ekPEM, err := utils.BuildMLKEMEncapsulationKeyPEM()
+		if err != nil {
+			return err
+		}
+		ekWriter, err := multipartWriter.CreateFormFile("encapsulation_key", "encapsulation_key.pub")
+		if err != nil {
+			return err
+		}
+		if _, err := ekWriter.Write(ekPEM); err != nil {
+			return err
+		}
+	}
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.Close()
