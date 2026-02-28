@@ -128,6 +128,11 @@ func uploadMigratedKey(token string) error {
 		return err
 	}
 
+	ekPEM, err := utils.BuildMLKEMEncapsulationKeyPEM()
+	if err != nil {
+		return err
+	}
+
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
 	fileWriter, err := multipartWriter.CreateFormFile("key", "keypair.pub")
@@ -135,6 +140,13 @@ func uploadMigratedKey(token string) error {
 		return err
 	}
 	if _, err := fileWriter.Write(sigPubPEM); err != nil {
+		return err
+	}
+	ekWriter, err := multipartWriter.CreateFormFile("encapsulation_key", "encapsulation_key.pub")
+	if err != nil {
+		return err
+	}
+	if _, err := ekWriter.Write(ekPEM); err != nil {
 		return err
 	}
 	multipartWriter.Close()
