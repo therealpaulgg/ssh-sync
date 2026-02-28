@@ -157,6 +157,16 @@ ssh-sync download
 
 This command fetches your SSH keys from the server, setting up your SSH environment on the machine.
 
+### Bidirectional Sync
+
+To upload your local keys first and then download the reconciled server state back to disk, run:
+
+```shell
+ssh-sync sync
+```
+
+Use `--path` (or `-p`) to point at a custom SSH directory for the upload step, and `--safe-mode` (or `-s`) to download into `.ssh-sync-data` instead of your primary `.ssh` directory. For one-way runs, add `--no-upload` or `--no-download` to skip a phase.
+
 #### Conflict Resolution
 
 In case there is a difference between a local file and one on your server, ssh-sync will let you know and you can opt to overwrite, skip, or save a file with a `.duplicate` extension for you to review manually.

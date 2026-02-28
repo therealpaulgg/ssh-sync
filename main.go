@@ -53,6 +53,31 @@ func main() {
 				Action: actions.Download,
 			},
 			{
+				Name:        "sync",
+				Description: "Upload first, then download from the server",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "path",
+						Aliases: []string{"p"},
+						Usage:   "Path to the ssh keys",
+					},
+					&cli.BoolFlag{
+						Name:    "safe-mode",
+						Aliases: []string{"s"},
+						Usage:   "Safe mode will sync to an alternate directory (.ssh-sync-data)",
+					},
+					&cli.BoolFlag{
+						Name:  "no-upload",
+						Usage: "Skip uploading before downloading",
+					},
+					&cli.BoolFlag{
+						Name:  "no-download",
+						Usage: "Skip downloading after uploading",
+					},
+				},
+				Action: actions.Sync,
+			},
+			{
 				Name:      "challenge-response",
 				ArgsUsage: "[challenge-phrase]",
 				Action:    actions.ChallengeResponse,
