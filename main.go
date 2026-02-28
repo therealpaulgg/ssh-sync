@@ -44,6 +44,11 @@ func main() {
 			{
 				Name: "download",
 				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "path",
+						Aliases: []string{"p"},
+						Usage:   "Path to write the downloaded SSH keys",
+					},
 					&cli.BoolFlag{
 						Name:    "safe-mode",
 						Aliases: []string{"s"},
@@ -51,6 +56,24 @@ func main() {
 					},
 				},
 				Action: actions.Download,
+			},
+			{
+				Name:        "sync",
+				Usage:       "Sync SSH keys bidirectionally with the server",
+				Description: "Synchronizes local SSH keys with the server. Newer version wins silently; prompts only on genuine conflicts.",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "path",
+						Aliases: []string{"p"},
+						Usage:   "Path to the local SSH keys directory",
+					},
+					&cli.BoolFlag{
+						Name:    "safe-mode",
+						Aliases: []string{"s"},
+						Usage:   "Safe mode will write downloads to an alternate directory (.ssh-sync-data)",
+					},
+				},
+				Action: actions.Sync,
 			},
 			{
 				Name:      "challenge-response",

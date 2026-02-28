@@ -12,11 +12,16 @@ import (
 )
 
 func GetAndCreateSshDirectory(sshDirectory string) (string, error) {
-	user, err := user.Current()
-	if err != nil {
-		return "", err
+	var p string
+	if filepath.IsAbs(sshDirectory) {
+		p = sshDirectory
+	} else {
+		u, err := user.Current()
+		if err != nil {
+			return "", err
+		}
+		p = filepath.Join(u.HomeDir, sshDirectory)
 	}
-	p := filepath.Join(user.HomeDir, sshDirectory)
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
 		if err := os.MkdirAll(p, 0700); err != nil {
 			return "", err

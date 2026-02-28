@@ -15,6 +15,7 @@ import (
 
 	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
+	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -179,30 +180,9 @@ func Upload(c *cli.Context) error {
 		}
 	}
 	multipartWriter.Close()
-	url2 := profile.ServerUrl
-	url2.Path = "/api/v1/data"
-	req2, err := http.NewRequest("POST", url2.String(), &multipartBody)
-	if err != nil {
+	client := retrieval.NewRetrievalClient()
+	if err = client.UploadData(profile, p, multipartWriter, multipartBody); err != nil {
 		return err
-	}
-	req2.Header.Add("Authorization", "Bearer "+token)
-	req2.Header.Add("Content-Type", multipartWriter.FormDataContentType())
-	res2, err := http.DefaultClient.Do(req2)
-	if err != nil {
-		return err
-	}
-	defer res2.Body.Close()
-	if res2.StatusCode != http.StatusOK {
-		return errors.New("failed to upload data. status code: " + strconv.Itoa(res2.StatusCode))
-	}
-	var uploadedKeys []dto.KeyDto
-	if err := json.NewDecoder(res2.Body).Decode(&uploadedKeys); err == nil {
-		for _, key := range uploadedKeys {
-			if key.UpdatedAt != nil {
-				localPath := filepath.Join(p, key.Filename)
-				_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
-			}
-		}
 	}
 	fmt.Println("Successfully uploaded keys.")
 	return nil
