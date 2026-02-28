@@ -27,7 +27,8 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	data, err := retrieval.GetUserData(profile)
+	client := retrieval.NewClient()
+	data, err := client.GetUserData(profile)
 	if err != nil {
 		return err
 	}

@@ -10,14 +10,14 @@ import (
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 )
 
-func GetMachines(profile *models.Profile) ([]dto.MachineDto, error) {
+func (c Client) GetMachines(profile *models.Profile) ([]dto.MachineDto, error) {
 	url := profile.ServerUrl
 	url.Path = "/api/v1/machines/"
 	req, err := http.NewRequest("GET", url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-	token, err := getToken()
+	token, err := c.GetToken()
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func GetMachines(profile *models.Profile) ([]dto.MachineDto, error) {
 	return machines, nil
 }
 
-func DeleteMachine(profile *models.Profile, machineName string) error {
+func (c Client) DeleteMachine(profile *models.Profile, machineName string) error {
 	buf := new(bytes.Buffer)
 	if err := json.NewEncoder(buf).Encode(dto.MachineDto{
 		Name: machineName,
@@ -52,7 +52,7 @@ func DeleteMachine(profile *models.Profile, machineName string) error {
 	if err != nil {
 		return err
 	}
-	token, err := getToken()
+	token, err := c.GetToken()
 	if err != nil {
 		return err
 	}

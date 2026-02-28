@@ -12,9 +12,9 @@ import (
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
 
-func GetUserData(profile *models.Profile) (dto.DataDto, error) {
+func (c Client) GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	var data dto.DataDto
-	token, err := getToken()
+	token, err := c.GetToken()
 	if err != nil {
 		return data, err
 	}
@@ -36,7 +36,7 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
 		return data, err
 	}
-	masterKey, err := retrieveMasterKey()
+	masterKey, err := c.RetrieveMasterKey()
 	if err != nil {
 		return data, err
 	}
@@ -50,8 +50,8 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	return data, nil
 }
 
-func DeleteKey(profile *models.Profile, key dto.KeyDto) error {
-	token, err := getToken()
+func (c Client) DeleteKey(profile *models.Profile, key dto.KeyDto) error {
+	token, err := c.GetToken()
 	if err != nil {
 		return err
 	}
