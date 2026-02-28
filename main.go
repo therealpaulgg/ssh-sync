@@ -76,6 +76,12 @@ func main() {
 				Action:      actions.Migrate,
 			},
 			{
+				Name:        "rotate-master-key",
+				Usage:       "Rotate the master key and re-encrypt all stored SSH keys",
+				Description: "Generates a new master key, re-encrypts all SSH keys on the server, and distributes the new key to each registered machine.",
+				Action:      actions.RotateMasterKey,
+			},
+			{
 				Name:        "interactive",
 				Description: "Uses a TUI mode for interacting with keys and config",
 				Usage:       "Interactively manage your ssh keys with a TUI",

@@ -32,6 +32,11 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if err := applyPendingRotation(profile); err != nil {
+		return fmt.Errorf("applying pending key rotation: %w", err)
+	}
+
 	token, err := utils.GetToken()
 	if err != nil {
 		return err

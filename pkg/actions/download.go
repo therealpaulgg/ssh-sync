@@ -2,7 +2,10 @@ package actions
 
 import (
 	"bufio"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -13,6 +16,77 @@ import (
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
+
+func applyPendingRotation(profile *models.Profile) error {
+	token, err := utils.GetToken()
+	if err != nil {
+		return fmt.Errorf("getting auth token: %w", err)
+	}
+
+	rotUrl := profile.ServerUrl
+	rotUrl.Path = "/api/v1/key-rotation"
+	req, err := http.NewRequest("GET", rotUrl.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusNotFound {
+		// No pending rotation
+		return nil
+	}
+	if res.StatusCode != http.StatusOK {
+		return errors.New("unexpected status checking key rotation: " + res.Status)
+	}
+
+	var rotDto dto.EncryptedMasterKeyDto
+	if err := json.NewDecoder(res.Body).Decode(&rotDto); err != nil {
+		return fmt.Errorf("decoding key rotation response: %w", err)
+	}
+
+	fmt.Println("Applying pending master key rotation...")
+	newMasterKey, err := utils.Decrypt(rotDto.EncryptedMasterKey)
+	if err != nil {
+		return fmt.Errorf("decrypting rotated master key: %w", err)
+	}
+
+	encryptedNew, err := utils.Encrypt(newMasterKey)
+	if err != nil {
+		return fmt.Errorf("re-encrypting new master key for local storage: %w", err)
+	}
+	if err := saveMasterKey(encryptedNew); err != nil {
+		return fmt.Errorf("saving rotated master key: %w", err)
+	}
+
+	// Acknowledge the rotation so the server can clean it up
+	token, err = utils.GetToken()
+	if err != nil {
+		return fmt.Errorf("getting auth token for delete: %w", err)
+	}
+	delUrl := profile.ServerUrl
+	delUrl.Path = "/api/v1/key-rotation"
+	delReq, err := http.NewRequest("DELETE", delUrl.String(), nil)
+	if err != nil {
+		return err
+	}
+	delReq.Header.Add("Authorization", "Bearer "+token)
+	delRes, err := http.DefaultClient.Do(delReq)
+	if err != nil {
+		return err
+	}
+	defer delRes.Body.Close()
+	if delRes.StatusCode != http.StatusOK {
+		return errors.New("failed to acknowledge key rotation: " + delRes.Status)
+	}
+
+	fmt.Println("Master key rotation applied successfully.")
+	return nil
+}
 
 func Download(c *cli.Context) error {
 	setup, err := utils.CheckIfSetup()
@@ -27,6 +101,11 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	if err := applyPendingRotation(profile); err != nil {
+		return fmt.Errorf("applying pending key rotation: %w", err)
+	}
+
 	client := retrieval.NewRetrievalClient()
 	data, err := client.GetUserData(profile)
 	if err != nil {
