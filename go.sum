@@ -84,8 +84,8 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/therealpaulgg/ssh-sync-common v0.0.1 h1:jGF8W/mS7YE0Le8jny+qfNYUcTayN1pfsp71QXFC9Ys=
-github.com/therealpaulgg/ssh-sync-common v0.0.1/go.mod h1:eGg17M5ihJpAIJ7RDXot0UDK6K4wRTHciY1rPJolaDU=
+github.com/therealpaulgg/ssh-sync-common v0.0.3 h1:fkTTBflY0ZIUhvTjvTtRGnpjiWUe4N6gIYiKQuLj35Y=
+github.com/therealpaulgg/ssh-sync-common v0.0.3/go.mod h1:eGg17M5ihJpAIJ7RDXot0UDK6K4wRTHciY1rPJolaDU=
 github.com/urfave/cli/v2 v2.23.7 h1:YHDQ46s3VghFHFf1DdF+Sh7H4RqhcM+t0TmZRJx4oJY=
 github.com/urfave/cli/v2 v2.23.7/go.mod h1:GHupkWPMM0M/sj1a2b4wUrWBPzazNrIjouW6fmdJLxc=
 github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 h1:bAn7/zixMGCfxrRTfdpNzjtPYqr8smhKouy9mxVdGPU=
