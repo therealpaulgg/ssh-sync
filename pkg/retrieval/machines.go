@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
-	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
 
 func GetMachines(profile *models.Profile) ([]dto.MachineDto, error) {
@@ -18,7 +17,7 @@ func GetMachines(profile *models.Profile) ([]dto.MachineDto, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err := utils.GetToken()
+	token, err := getToken()
 	if err != nil {
 		return nil, err
 	}
@@ -28,6 +27,7 @@ func GetMachines(profile *models.Profile) ([]dto.MachineDto, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -52,7 +52,7 @@ func DeleteMachine(profile *models.Profile, machineName string) error {
 	if err != nil {
 		return err
 	}
-	token, err := utils.GetToken()
+	token, err := getToken()
 	if err != nil {
 		return err
 	}
@@ -62,6 +62,7 @@ func DeleteMachine(profile *models.Profile, machineName string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}

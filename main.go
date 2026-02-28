@@ -21,7 +21,14 @@ func main() {
 			{
 				Name:        "setup",
 				Description: "Set up your system to use ssh-sync.",
-				Action:      actions.Setup,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "classic",
+						Aliases: []string{"c"},
+						Usage:   "Use classical elliptic curve cryptography (ECDSA/ECDH-ES) instead of post-quantum",
+					},
+				},
+				Action: actions.Setup,
 			},
 			{
 				Name: "upload",
@@ -62,6 +69,11 @@ func main() {
 			{
 				Name:   "reset",
 				Action: actions.Reset,
+			},
+			{
+				Name:        "migrate",
+				Description: "Migrate keys from classical ECDSA to post-quantum (ML-DSA-65 + ML-KEM-768)",
+				Action:      actions.Migrate,
 			},
 			{
 				Name:        "interactive",

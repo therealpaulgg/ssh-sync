@@ -1,6 +1,7 @@
 package retrieval
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,41 +10,62 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/stretchr/testify/require"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
+	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
+
+// testMasterKey returns a random 32-byte AES key and installs it as the
+// mock master key for the duration of the test.
+func mockMasterKey(t *testing.T) []byte {
+	t.Helper()
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	require.NoError(t, err)
+	orig := retrieveMasterKey
+	retrieveMasterKey = func() ([]byte, error) { return key, nil }
+	t.Cleanup(func() { retrieveMasterKey = orig })
+
+	origToken := getToken
+	getToken = func() (string, error) { return "test-token", nil }
+	t.Cleanup(func() { getToken = origToken })
+
+	return key
+}
 
 func TestDownloadData(t *testing.T) {
 	// Arrange
-	// TODO generate ecdsa key
-	// TODO encrypt key with a user's private key
-	key := []byte{}
+	masterKey := mockMasterKey(t)
+	plaintext := []byte("test key contents")
+	encryptedKey, err := utils.EncryptWithMasterKey(plaintext, masterKey)
+	require.NoError(t, err)
+
 	profile := &models.Profile{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode([]dto.DataDto{
-			{
-				ID:       uuid.New(),
-				Username: "test",
-				Keys: []dto.KeyDto{
-					{
-						ID:       uuid.New(),
-						UserID:   uuid.New(),
-						Filename: "test",
-						Data:     key,
-					},
+		json.NewEncoder(w).Encode(dto.DataDto{
+			ID:       uuid.New(),
+			Username: "test",
+			Keys: []dto.KeyDto{
+				{
+					ID:       uuid.New(),
+					UserID:   uuid.New(),
+					Filename: "test",
+					Data:     encryptedKey,
 				},
-				SshConfig: []dto.SshConfigDto{
-					{
-						Host: "test",
-						Values: map[string][]string{
-							"foo": {"bar"},
-						},
-						IdentityFiles: []string{"test"},
+			},
+			SshConfig: []dto.SshConfigDto{
+				{
+					Host: "test",
+					Values: map[string][]string{
+						"foo": {"bar"},
 					},
+					IdentityFiles: []string{"test"},
 				},
 			},
 		})
 	}))
+	defer server.Close()
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
@@ -51,10 +73,12 @@ func TestDownloadData(t *testing.T) {
 	// Assert
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(data.Keys))
+	assert.Equal(t, plaintext, data.Keys[0].Data)
 }
 
 func TestDeleteKey(t *testing.T) {
 	// Arrange
+	mockMasterKey(t)
 	key := dto.KeyDto{
 		ID:       uuid.New(),
 		UserID:   uuid.New(),
@@ -64,6 +88,7 @@ func TestDeleteKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
+	defer server.Close()
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act

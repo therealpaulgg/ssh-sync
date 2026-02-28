@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -22,53 +21,83 @@ import (
 	"strconv"
 
 	"github.com/gobwas/ws"
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/wsutils"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 	"github.com/urfave/cli/v2"
 )
 
-func generateKey() (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
+func generateKey() error {
+	u, err := user.Current()
+	if err != nil {
+		return err
+	}
+	p := filepath.Join(u.HomeDir, ".ssh-sync")
+	if err := os.MkdirAll(p, 0700); err != nil {
+		return err
+	}
+
+	// Generate random master seed
+	masterSeed := make([]byte, utils.MasterSeedSize)
+	if _, err := rand.Read(masterSeed); err != nil {
+		return fmt.Errorf("generating master seed: %w", err)
+	}
+
+	// Write private key file: single PEM block with the master seed
+	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer privOut.Close()
+	if err := pem.Encode(privOut, &pem.Block{Type: "SSHSYNC PQ MASTER SEED", Bytes: masterSeed}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateKeyClassic() error {
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	pub := &priv.PublicKey
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	// then the program will save the keypair to ~/.ssh-sync/keypair.pub and ~/.ssh-sync/keypair
 	user, err := user.Current()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	p := filepath.Join(user.HomeDir, ".ssh-sync")
 	if err := os.MkdirAll(p, 0700); err != nil {
-		return nil, nil, err
+		return err
 	}
 	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	privBytes, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	pubOut, err := os.OpenFile(filepath.Join(p, "keypair.pub"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	defer pubOut.Close()
 	if err := pem.Encode(pubOut, &pem.Block{Type: "PUBLIC KEY", Bytes: pubBytes}); err != nil {
-		return nil, nil, err
+		return err
 	}
 	privOut, err := os.OpenFile(filepath.Join(p, "keypair"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	defer privOut.Close()
 	if err := pem.Encode(privOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: privBytes}); err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	return priv, pub, nil
+	return nil
 }
 
 func saveMasterKey(masterKey []byte) error {
@@ -134,6 +163,7 @@ func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	defer res.Body.Close()
 	if res.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
@@ -141,18 +171,6 @@ func checkIfAccountExists(username string, serverUrl *url.URL) (bool, error) {
 		return false, errors.New("failed to check if account exists. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	return true, nil
-}
-
-func getPubkeyFile() (*os.File, error) {
-	user, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	pubkeyFile, err := os.Open(filepath.Join(user.HomeDir, ".ssh-sync", "keypair.pub"))
-	if err != nil {
-		return nil, err
-	}
-	return pubkeyFile, nil
 }
 
 func createMasterKey() ([]byte, error) {
@@ -164,7 +182,7 @@ func createMasterKey() ([]byte, error) {
 	return masterKey, nil
 }
 
-func newAccountSetup(serverUrl *url.URL) error {
+func newAccountSetup(serverUrl *url.URL, classic bool) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	// ask user to pick a username.
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
@@ -187,9 +205,16 @@ func newAccountSetup(serverUrl *url.URL) error {
 		return err
 	}
 	// then the program will generate a keypair, and upload the public key to the server
-	fmt.Println("Generating keypair...")
-	if _, _, err := generateKey(); err != nil {
-		return err
+	if classic {
+		fmt.Println("Generating classical keypair (ECDSA P-256)...")
+		if err := generateKeyClassic(); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+		if err := generateKey(); err != nil {
+			return err
+		}
 	}
 	masterKey, err := createMasterKey()
 	if err != nil {
@@ -209,12 +234,22 @@ func newAccountSetup(serverUrl *url.URL) error {
 	}
 	var multipartBody bytes.Buffer
 	multipartWriter := multipart.NewWriter(&multipartBody)
-	pubkeyFile, err := getPubkeyFile()
+	var pubkeyPEM []byte
+	if classic {
+		pubkeyPEM, err = utils.BuildECPublicKeyPEM()
+	} else {
+		pubkeyPEM, err = utils.BuildMLDSAPublicKeyPEM()
+	}
 	if err != nil {
 		return err
 	}
-	fileWriter, _ := multipartWriter.CreateFormFile("key", pubkeyFile.Name())
-	io.Copy(fileWriter, pubkeyFile)
+	fileWriter, err := multipartWriter.CreateFormFile("key", "keypair.pub")
+	if err != nil {
+		return err
+	}
+	if _, err := fileWriter.Write(pubkeyPEM); err != nil {
+		return err
+	}
 	multipartWriter.WriteField("username", username)
 	multipartWriter.WriteField("machine_name", machineName)
 	multipartWriter.Close()
@@ -229,13 +264,14 @@ func newAccountSetup(serverUrl *url.URL) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to create user. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	return nil
 }
 
-func existingAccountSetup(serverUrl *url.URL) error {
+func existingAccountSetup(serverUrl *url.URL, classic bool) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	fmt.Print("Please enter a username. This will be used to identify your account on the server: ")
 	var username string
@@ -272,44 +308,62 @@ func existingAccountSetup(serverUrl *url.URL) error {
 		Username:    username,
 		MachineName: machineName,
 	}
-	if err := utils.WriteClientMessage(&conn, userMachine); err != nil {
+	if err := wsutils.WriteClientMessage(&conn, userMachine); err != nil {
 		return err
 	}
-	challengePhrase, err := utils.ReadServerMessage[dto.MessageDto](&conn)
+	challengePhrase, err := wsutils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Please enter this phrase using the 'challenge-response' command on another machine: %s\n", challengePhrase.Data.Message)
-	challengeSuccessResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)
+	challengeSuccessResponse, err := wsutils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
 	fmt.Println(challengeSuccessResponse.Data.Message)
-	fmt.Println("Generating keypair...")
-	if _, _, err := generateKey(); err != nil {
-		return err
+	if classic {
+		fmt.Println("Generating classical keypair (ECDSA P-256)...")
+		if err := generateKeyClassic(); err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("Generating post-quantum keypair (ML-DSA-65 + ML-KEM-768)...")
+		if err := generateKey(); err != nil {
+			return err
+		}
 	}
 	saveProfile(username, machineName, *serverUrl)
-	f, err := getPubkeyFile()
-	if err != nil {
+
+	var pubKeyMsg dto.PublicKeyDto
+	if classic {
+		pubkeyPEM, err := utils.BuildECPublicKeyPEM()
+		if err != nil {
+			return err
+		}
+		pubKeyMsg.PublicKey = pubkeyPEM
+	} else {
+		sigPubPEM, err := utils.BuildMLDSAPublicKeyPEM()
+		if err != nil {
+			return err
+		}
+		ekPEM, err := utils.BuildMLKEMEncapsulationKeyPEM()
+		if err != nil {
+			return err
+		}
+		pubKeyMsg.PublicKey = sigPubPEM
+		pubKeyMsg.EncapsulationKey = ekPEM
+	}
+	if err := wsutils.WriteClientMessage(&conn, pubKeyMsg); err != nil {
 		return err
 	}
-	defer f.Close()
-	pubkey, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	if err := utils.WriteClientMessage(&conn, dto.PublicKeyDto{PublicKey: pubkey}); err != nil {
-		return err
-	}
-	encryptedMasterKey, err := utils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)
+	encryptedMasterKey, err := wsutils.ReadServerMessage[dto.EncryptedMasterKeyDto](&conn)
 	if err != nil {
 		return err
 	}
 	if err := saveMasterKey(encryptedMasterKey.Data.EncryptedMasterKey); err != nil {
 		return err
 	}
-	finalResponse, err := utils.ReadServerMessage[dto.MessageDto](&conn)
+	finalResponse, err := wsutils.ReadServerMessage[dto.MessageDto](&conn)
 	if err != nil {
 		return err
 	}
@@ -367,17 +421,20 @@ func Setup(c *cli.Context) error {
 	}
 
 	// test connection to server
-	if _, err := http.Get(serverUrl.String()); err != nil {
+	pingResp, err := http.Get(serverUrl.String())
+	if err != nil {
 		fmt.Println("It seems we are unable to connect to this ssh-sync server at the moment. Please check your configuration and try again.")
 		return err
 	}
+	pingResp.Body.Close()
 	fmt.Print("Do you already have an account on the ssh-sync server? (y/n): ")
 	var answer string
 	if err := utils.ReadLineFromStdin(scanner, &answer); err != nil {
 		return err
 	}
+	classic := c.Bool("classic")
 	if answer == "y" {
-		return existingAccountSetup(serverUrl)
+		return existingAccountSetup(serverUrl, classic)
 	}
-	return newAccountSetup(serverUrl)
+	return newAccountSetup(serverUrl, classic)
 }

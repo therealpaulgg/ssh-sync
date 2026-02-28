@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/samber/lo"
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/retrieval"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 )
 
@@ -22,6 +22,7 @@ func TestGetMachines(t *testing.T) {
 			},
 		})
 	}))
+	defer server.Close()
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
@@ -38,6 +39,7 @@ func TestDeleteMachine(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
+	defer server.Close()
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act
@@ -52,6 +54,7 @@ func TestDeleteMachineDoesNotExist(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
+	defer server.Close()
 	url, _ := url.Parse(server.URL)
 	profile.ServerUrl = *url
 	// Act

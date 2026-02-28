@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/therealpaulgg/ssh-sync/pkg/dto"
+	"github.com/therealpaulgg/ssh-sync-common/pkg/dto"
 	"github.com/therealpaulgg/ssh-sync/pkg/models"
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
 
 func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	var data dto.DataDto
-	token, err := utils.GetToken()
+	token, err := getToken()
 	if err != nil {
 		return data, err
 	}
@@ -29,13 +29,14 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	if err != nil {
 		return data, err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return data, errors.New("failed to get data. status code: " + strconv.Itoa(res.StatusCode))
 	}
 	if err := json.NewDecoder(res.Body).Decode(&data); err != nil {
 		return data, err
 	}
-	masterKey, err := utils.RetrieveMasterKey()
+	masterKey, err := retrieveMasterKey()
 	if err != nil {
 		return data, err
 	}
@@ -50,7 +51,7 @@ func GetUserData(profile *models.Profile) (dto.DataDto, error) {
 }
 
 func DeleteKey(profile *models.Profile, key dto.KeyDto) error {
-	token, err := utils.GetToken()
+	token, err := getToken()
 	if err != nil {
 		return err
 	}
@@ -65,6 +66,7 @@ func DeleteKey(profile *models.Profile, key dto.KeyDto) error {
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		return errors.New("failed to delete data. status code: " + strconv.Itoa(res.StatusCode))
 	}
