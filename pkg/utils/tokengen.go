@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"filippo.io/mldsa"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
@@ -60,9 +61,15 @@ func getTokenPQ() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return buildPQToken(sk, profile.Username, profile.MachineName)
+}
 
+// buildPQToken constructs a JWT signed with ML-DSA-65 using the algorithm
+// identifier defined in draft-ietf-cose-dilithium:
+// https://datatracker.ietf.org/doc/draft-ietf-cose-dilithium/
+func buildPQToken(sk *mldsa.PrivateKey, username, machineName string) (string, error) {
 	header := map[string]string{
-		"alg": "MLDSA",
+		"alg": mldsa.MLDSA65().String(),
 		"typ": "JWT",
 	}
 	headerJSON, err := json.Marshal(header)
@@ -75,8 +82,8 @@ func getTokenPQ() (string, error) {
 		"iss":      "github.com/therealpaulgg/ssh-sync",
 		"iat":      now.Add(-1 * time.Minute).Unix(),
 		"exp":      now.Add(2 * time.Minute).Unix(),
-		"username": profile.Username,
-		"machine":  profile.MachineName,
+		"username": username,
+		"machine":  machineName,
 	}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
