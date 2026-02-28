@@ -119,10 +119,6 @@ func RotateMasterKey(c *cli.Context) error {
 		return fmt.Errorf("marshaling rotation request: %w", err)
 	}
 
-	token, err = utils.GetToken()
-	if err != nil {
-		return fmt.Errorf("getting auth token: %w", err)
-	}
 	rotUrl := profile.ServerUrl
 	rotUrl.Path = "/api/v1/key-rotation"
 	rotHttpReq, err := http.NewRequest("POST", rotUrl.String(), bytes.NewReader(rotationBody))
