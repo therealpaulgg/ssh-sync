@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -72,8 +71,6 @@ func Upload(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	var multipartBody bytes.Buffer
-	multipartWriter := multipart.NewWriter(&multipartBody)
 	p := c.String("path")
 	if p == "" {
 		user, err := user.Current()
@@ -82,12 +79,15 @@ func Upload(c *cli.Context) error {
 		}
 		p = filepath.Join(user.HomeDir, ".ssh")
 	}
-	data, err := os.ReadDir(p)
+	dirEntries, err := os.ReadDir(p)
 	if err != nil {
 		return err
 	}
+	keys := make(map[string][]byte)
 	hosts := []models.Host{}
-	for _, file := range data {
+	var knownHosts []dto.KnownHostDto
+
+	for _, file := range dirEntries {
 		if file.IsDir() || isSkippedBinaryUpload(file.Name()) {
 			continue
 		} else if file.Name() == "config" {
@@ -124,88 +124,119 @@ func Upload(c *cli.Context) error {
 			}
 		}
 
-		f, err := os.OpenFile(filepath.Join(p, file.Name()), os.O_RDONLY, 0600)
+		fileBytes, err := os.ReadFile(filepath.Join(p, file.Name()))
 		if err != nil {
 			return err
 		}
-		// read file into buffer
-		data, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		encBytes, err := utils.EncryptWithMasterKey(data, masterKey)
-		if err != nil {
-			return err
-		}
-		w, _ := multipartWriter.CreateFormFile("keys[]", file.Name())
-		if _, err := io.Copy(w, bytes.NewReader(encBytes)); err != nil {
-			return err
-		}
+		keys[file.Name()] = fileBytes
 	}
-	if hosts != nil {
-		jsonBytes, err := json.Marshal(hosts)
-		if err != nil {
-			return err
-		}
-		w, err := multipartWriter.CreateFormField("ssh_config")
-		if err != nil {
-			return err
-		}
-		if _, err := w.Write(jsonBytes); err != nil {
-			return err
-		}
-	}
+
 	knownHostsPath := filepath.Join(p, "known_hosts")
 	if knownHostEntries, err := utils.ParseKnownHosts(knownHostsPath); err == nil && len(knownHostEntries) > 0 {
-		khDtos := make([]dto.KnownHostDto, len(knownHostEntries))
-		for i, entry := range knownHostEntries {
-			khDtos[i] = dto.KnownHostDto{
-				HostPattern: entry.HostPattern,
-				KeyType:     entry.KeyType,
-				KeyData:     entry.KeyData,
-				Marker:      entry.Marker,
-			}
-		}
-		jsonBytes, err := json.Marshal(khDtos)
-		if err != nil {
-			return err
-		}
-		w, err := multipartWriter.CreateFormField("known_hosts")
-		if err != nil {
-			return err
-		}
-		if _, err := w.Write(jsonBytes); err != nil {
-			return err
-		}
+		knownHosts = knownHostEntriesToDtos(knownHostEntries)
 	}
-	multipartWriter.Close()
-	url2 := profile.ServerUrl
-	url2.Path = "/api/v1/data"
-	req2, err := http.NewRequest("POST", url2.String(), &multipartBody)
+
+	uploadedKeys, err := sendUpload(keys, hosts, knownHosts, masterKey, token, profile)
 	if err != nil {
 		return err
 	}
-	req2.Header.Add("Authorization", "Bearer "+token)
-	req2.Header.Add("Content-Type", multipartWriter.FormDataContentType())
-	res2, err := http.DefaultClient.Do(req2)
-	if err != nil {
-		return err
-	}
-	defer res2.Body.Close()
-	if res2.StatusCode != http.StatusOK {
-		return errors.New("failed to upload data. status code: " + strconv.Itoa(res2.StatusCode))
-	}
-	var uploadedKeys []dto.KeyDto
-	if err := json.NewDecoder(res2.Body).Decode(&uploadedKeys); err == nil {
-		for _, key := range uploadedKeys {
-			if key.UpdatedAt != nil {
-				localPath := filepath.Join(p, key.Filename)
-				_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
-			}
+	for _, key := range uploadedKeys {
+		if key.UpdatedAt != nil {
+			localPath := filepath.Join(p, key.Filename)
+			_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
 		}
 	}
 	fmt.Println("Successfully uploaded keys.")
 	return nil
+}
+
+// sendUpload encrypts the given keys with masterKey, builds a multipart request,
+// POSTs it to /api/v1/data, and returns the uploaded key DTOs (with server timestamps).
+func sendUpload(
+	keys map[string][]byte,
+	hosts []models.Host,
+	knownHosts []dto.KnownHostDto,
+	masterKey []byte,
+	token string,
+	profile *models.Profile,
+) ([]dto.KeyDto, error) {
+	var multipartBody bytes.Buffer
+	multipartWriter := multipart.NewWriter(&multipartBody)
+
+	for filename, data := range keys {
+		encBytes, err := utils.EncryptWithMasterKey(data, masterKey)
+		if err != nil {
+			return nil, err
+		}
+		w, _ := multipartWriter.CreateFormFile("keys[]", filename)
+		if _, err := w.Write(encBytes); err != nil {
+			return nil, err
+		}
+	}
+	if len(hosts) > 0 {
+		jsonBytes, err := json.Marshal(hosts)
+		if err != nil {
+			return nil, err
+		}
+		w, err := multipartWriter.CreateFormField("ssh_config")
+		if err != nil {
+			return nil, err
+		}
+		if _, err := w.Write(jsonBytes); err != nil {
+			return nil, err
+		}
+	}
+	if len(knownHosts) > 0 {
+		jsonBytes, err := json.Marshal(knownHosts)
+		if err != nil {
+			return nil, err
+		}
+		w, err := multipartWriter.CreateFormField("known_hosts")
+		if err != nil {
+			return nil, err
+		}
+		if _, err := w.Write(jsonBytes); err != nil {
+			return nil, err
+		}
+	}
+	multipartWriter.Close()
+
+	postURL := profile.ServerUrl
+	postURL.Path = "/api/v1/data"
+	req, err := http.NewRequest("POST", postURL.String(), &multipartBody)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Content-Type", multipartWriter.FormDataContentType())
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return nil, errors.New("failed to upload data. status code: " + strconv.Itoa(res.StatusCode))
+	}
+	var uploadedKeys []dto.KeyDto
+	if err := json.NewDecoder(res.Body).Decode(&uploadedKeys); err != nil {
+		return nil, err
+	}
+	return uploadedKeys, nil
+}
+
+// knownHostEntriesToDtos converts a slice of local KnownHostEntry models to the
+// wire DTO form used by the server API.
+func knownHostEntriesToDtos(entries []models.KnownHostEntry) []dto.KnownHostDto {
+	dtos := make([]dto.KnownHostDto, len(entries))
+	for i, e := range entries {
+		dtos[i] = dto.KnownHostDto{
+			HostPattern: e.HostPattern,
+			KeyType:     e.KeyType,
+			KeyData:     e.KeyData,
+			Marker:      e.Marker,
+		}
+	}
+	return dtos
 }
 
 // isSkippedBinaryUpload reports whether a filename must not be sent as an

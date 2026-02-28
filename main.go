@@ -54,7 +54,7 @@ func main() {
 			},
 			{
 				Name:        "sync",
-				Description: "Synchronize keys by uploading or downloading first based on freshness",
+				Description: "Bidirectional sync: fetches server state once, classifies each key as upload/download/skip/conflict based on timestamps and last-sync time, then executes only the necessary transfers.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:    "path",
