@@ -10,8 +10,6 @@ import (
 	"github.com/lestrrat-go/jwx/v2/jwk"
 )
 
-const mlkemCtSize = 1088
-
 func EncryptWithMasterKey(plaintext []byte, key []byte) ([]byte, error) {
 	return aesGCMEncrypt(key, plaintext)
 }

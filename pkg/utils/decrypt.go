@@ -35,12 +35,12 @@ func Decrypt(b []byte) ([]byte, error) {
 }
 
 func DecryptMLKEM(data []byte, dk *mlkem.DecapsulationKey768) ([]byte, error) {
-	if len(data) < mlkemCtSize {
+	if len(data) < mlkem.CiphertextSize768 {
 		return nil, fmt.Errorf("data too short for ML-KEM ciphertext")
 	}
 
-	kemCiphertext := data[:mlkemCtSize]
-	remainder := data[mlkemCtSize:]
+	kemCiphertext := data[:mlkem.CiphertextSize768]
+	remainder := data[mlkem.CiphertextSize768:]
 
 	sharedSecret, err := dk.Decapsulate(kemCiphertext)
 	if err != nil {
