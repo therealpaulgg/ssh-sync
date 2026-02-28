@@ -75,7 +75,7 @@ func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 		if d.IsDir() {
 			return nil
 		}
-		if d.Name() == "config" {
+		if d.Name() == "config" || d.Name() == "authorized_keys" {
 			return nil
 		}
 		_, exists := lo.Find(keys, func(key dto.KeyDto) bool {
