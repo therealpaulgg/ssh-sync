@@ -22,7 +22,7 @@ func NewSSHKeyManager(baseState baseState) (*SSHKeyManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
-	client := retrieval.NewClient()
+	client := retrieval.NewRetrievalClient()
 	data, err := client.GetUserData(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user data: %w", err)

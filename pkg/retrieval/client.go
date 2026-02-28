@@ -2,13 +2,13 @@ package retrieval
 
 import "github.com/therealpaulgg/ssh-sync/pkg/utils"
 
-type Client struct {
+type RetrievalClient struct {
 	GetToken          func() (string, error)
 	RetrieveMasterKey func() ([]byte, error)
 }
 
-func NewClient() Client {
-	return Client{
+func NewRetrievalClient() RetrievalClient {
+	return RetrievalClient{
 		GetToken:          utils.GetToken,
 		RetrieveMasterKey: utils.RetrieveMasterKey,
 	}

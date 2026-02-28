@@ -25,7 +25,7 @@ func RemoveMachine(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	client := retrieval.NewClient()
+	client := retrieval.NewRetrievalClient()
 	answer := c.Args().First()
 	scanner := bufio.NewScanner(os.Stdin)
 	if answer == "" {

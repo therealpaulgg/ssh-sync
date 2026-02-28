@@ -12,7 +12,7 @@ import (
 	"github.com/therealpaulgg/ssh-sync/pkg/utils"
 )
 
-func (c Client) GetUserData(profile *models.Profile) (dto.DataDto, error) {
+func (c RetrievalClient) GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	var data dto.DataDto
 	token, err := c.GetToken()
 	if err != nil {
@@ -50,7 +50,7 @@ func (c Client) GetUserData(profile *models.Profile) (dto.DataDto, error) {
 	return data, nil
 }
 
-func (c Client) DeleteKey(profile *models.Profile, key dto.KeyDto) error {
+func (c RetrievalClient) DeleteKey(profile *models.Profile, key dto.KeyDto) error {
 	token, err := c.GetToken()
 	if err != nil {
 		return err

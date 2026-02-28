@@ -79,12 +79,12 @@ func TestDeleteKey(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func newTestClient(t *testing.T) (Client, []byte) {
+func newTestClient(t *testing.T) (RetrievalClient, []byte) {
 	t.Helper()
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
 	require.NoError(t, err)
-	return Client{
+	return RetrievalClient{
 		GetToken:          func() (string, error) { return "test-token", nil },
 		RetrieveMasterKey: func() ([]byte, error) { return key, nil },
 	}, key

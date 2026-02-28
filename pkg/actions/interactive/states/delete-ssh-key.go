@@ -56,7 +56,7 @@ func (d *DeleteSSHKey) deleteKey() error {
 	if err != nil {
 		return err
 	}
-	client := retrieval.NewClient()
+	client := retrieval.NewRetrievalClient()
 	err = client.DeleteKey(profile, d.key)
 	return err
 }
