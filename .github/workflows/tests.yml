@@ -107,3 +107,13 @@ jobs:
         run: |
           echo "Created packages:"
           ls -la *.deb *.rpm *.pkg.tar.zst
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.19.7"
+      - name: Run unit tests
+        run: go test ./...
