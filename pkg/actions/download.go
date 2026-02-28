@@ -50,7 +50,23 @@ func Download(c *cli.Context) error {
 		return err
 	}
 	for _, key := range data.Keys {
+		if isReservedFilename(key.Filename) {
+			continue
+		}
 		if err := utils.WriteKey(key.Data, key.Filename, directory); err != nil {
+			return err
+		}
+	}
+	if len(data.KnownHosts) > 0 {
+		entries := lo.Map(data.KnownHosts, func(kh dto.KnownHostDto, _ int) models.KnownHostEntry {
+			return models.KnownHostEntry{
+				HostPattern: kh.HostPattern,
+				KeyType:     kh.KeyType,
+				KeyData:     kh.KeyData,
+				Marker:      kh.Marker,
+			}
+		})
+		if err := utils.WriteKnownHosts(entries, directory); err != nil {
 			return err
 		}
 	}
@@ -76,7 +92,7 @@ func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 		if d.IsDir() {
 			return nil
 		}
-		if d.Name() == "config" || d.Name() == "authorized_keys" {
+		if isReservedFilename(d.Name()) {
 			return nil
 		}
 		_, exists := lo.Find(keys, func(key dto.KeyDto) bool {
@@ -102,4 +118,15 @@ func checkForDeletedKeys(keys []dto.KeyDto, directory string) error {
 		return err
 	}
 	return nil
+}
+
+// isReservedFilename reports whether a filename should never be treated as a
+// synced key — either because it is managed separately (config, known_hosts)
+// or because it must never leave the local machine (authorized_keys).
+func isReservedFilename(name string) bool {
+	switch name {
+	case "known_hosts", "authorized_keys", "config":
+		return true
+	}
+	return false
 }

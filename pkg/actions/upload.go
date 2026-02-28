@@ -83,7 +83,7 @@ func Upload(c *cli.Context) error {
 	}
 	hosts := []models.Host{}
 	for _, file := range data {
-		if file.IsDir() || file.Name() == "authorized_keys" {
+		if file.IsDir() || isSkippedBinaryUpload(file.Name()) {
 			continue
 		} else if file.Name() == "config" {
 			hosts, err = utils.ParseConfig()
@@ -150,6 +150,29 @@ func Upload(c *cli.Context) error {
 			return err
 		}
 	}
+	knownHostsPath := filepath.Join(p, "known_hosts")
+	if knownHostEntries, err := utils.ParseKnownHosts(knownHostsPath); err == nil && len(knownHostEntries) > 0 {
+		khDtos := make([]dto.KnownHostDto, len(knownHostEntries))
+		for i, entry := range knownHostEntries {
+			khDtos[i] = dto.KnownHostDto{
+				HostPattern: entry.HostPattern,
+				KeyType:     entry.KeyType,
+				KeyData:     entry.KeyData,
+				Marker:      entry.Marker,
+			}
+		}
+		jsonBytes, err := json.Marshal(khDtos)
+		if err != nil {
+			return err
+		}
+		w, err := multipartWriter.CreateFormField("known_hosts")
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(jsonBytes); err != nil {
+			return err
+		}
+	}
 	multipartWriter.Close()
 	url2 := profile.ServerUrl
 	url2.Path = "/api/v1/data"
@@ -167,6 +190,26 @@ func Upload(c *cli.Context) error {
 	if res2.StatusCode != http.StatusOK {
 		return errors.New("failed to upload data. status code: " + strconv.Itoa(res2.StatusCode))
 	}
+	var uploadedKeys []dto.KeyDto
+	if err := json.NewDecoder(res2.Body).Decode(&uploadedKeys); err == nil {
+		for _, key := range uploadedKeys {
+			if key.UpdatedAt != nil {
+				localPath := filepath.Join(p, key.Filename)
+				_ = os.Chtimes(localPath, *key.UpdatedAt, *key.UpdatedAt)
+			}
+		}
+	}
 	fmt.Println("Successfully uploaded keys.")
 	return nil
+}
+
+// isSkippedBinaryUpload reports whether a filename must not be sent as an
+// encrypted binary key. known_hosts is synced as structured entries;
+// authorized_keys must never leave the local machine.
+func isSkippedBinaryUpload(name string) bool {
+	switch name {
+	case "known_hosts", "authorized_keys":
+		return true
+	}
+	return false
 }
