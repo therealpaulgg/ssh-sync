@@ -83,7 +83,7 @@ func Upload(c *cli.Context) error {
 	}
 	hosts := []models.Host{}
 	for _, file := range data {
-		if file.IsDir() || file.Name() == "authorized_keys" {
+		if file.IsDir() || file.Name() == "authorized_keys" || file.Name() == "known_hosts" {
 			continue
 		} else if file.Name() == "config" {
 			hosts, err = utils.ParseConfig()
@@ -143,6 +143,29 @@ func Upload(c *cli.Context) error {
 			return err
 		}
 		w, err := multipartWriter.CreateFormField("ssh_config")
+		if err != nil {
+			return err
+		}
+		if _, err := w.Write(jsonBytes); err != nil {
+			return err
+		}
+	}
+	knownHostsPath := filepath.Join(p, "known_hosts")
+	if knownHostEntries, err := utils.ParseKnownHosts(knownHostsPath); err == nil && len(knownHostEntries) > 0 {
+		khDtos := make([]dto.KnownHostDto, len(knownHostEntries))
+		for i, entry := range knownHostEntries {
+			khDtos[i] = dto.KnownHostDto{
+				HostPattern: entry.HostPattern,
+				KeyType:     entry.KeyType,
+				KeyData:     entry.KeyData,
+				Marker:      entry.Marker,
+			}
+		}
+		jsonBytes, err := json.Marshal(khDtos)
+		if err != nil {
+			return err
+		}
+		w, err := multipartWriter.CreateFormField("known_hosts")
 		if err != nil {
 			return err
 		}
