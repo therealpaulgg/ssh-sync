@@ -16,11 +16,11 @@ import (
 )
 
 func RetrievePrivateKey() (jwk.Key, error) {
-	u, err := user.Current()
+	user, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "keypair")
 	file, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
@@ -30,11 +30,11 @@ func RetrievePrivateKey() (jwk.Key, error) {
 }
 
 func RetrievePublicKey() (jwk.Key, error) {
-	u, err := user.Current()
+	user, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
-	p := filepath.Join(u.HomeDir, ".ssh-sync", "keypair.pub")
+	p := filepath.Join(user.HomeDir, ".ssh-sync", "keypair.pub")
 	file, err := os.ReadFile(p)
 	if err != nil {
 		return nil, err
