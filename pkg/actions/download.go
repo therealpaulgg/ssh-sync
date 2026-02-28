@@ -111,9 +111,10 @@ func Download(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	isSafeMode := c.Bool("safe-mode")
 	var directory string
-	if isSafeMode {
+	if p := c.String("path"); p != "" {
+		directory = p
+	} else if c.Bool("safe-mode") {
 		fmt.Println("Executing in safe mode (keys writing to .ssh-sync-data)")
 		directory = ".ssh-sync-data"
 	} else {

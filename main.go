@@ -44,6 +44,11 @@ func main() {
 			{
 				Name: "download",
 				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "path",
+						Aliases: []string{"p"},
+						Usage:   "Path to write the downloaded SSH keys",
+					},
 					&cli.BoolFlag{
 						Name:    "safe-mode",
 						Aliases: []string{"s"},
