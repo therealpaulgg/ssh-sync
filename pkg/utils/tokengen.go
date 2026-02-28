@@ -5,10 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
-	"filippo.io/mldsa"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwt"
 )
@@ -98,22 +96,3 @@ func getTokenPQ() (string, error) {
 	return signingInput + "." + b64Sig, nil
 }
 
-func VerifyMLDSAJWT(tokenStr string, pk *mldsa.PublicKey) (bool, error) {
-	parts := splitJWT(tokenStr)
-	if len(parts) != 3 {
-		return false, fmt.Errorf("invalid JWT format")
-	}
-	signingInput := parts[0] + "." + parts[1]
-	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
-	if err != nil {
-		return false, fmt.Errorf("decoding signature: %w", err)
-	}
-	if err := mldsa.Verify(pk, []byte(signingInput), sig, nil); err != nil {
-		return false, nil
-	}
-	return true, nil
-}
-
-func splitJWT(s string) []string {
-	return strings.Split(s, ".")
-}

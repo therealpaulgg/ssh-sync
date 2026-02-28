@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"crypto/rand"
-	"encoding/base64"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -118,66 +117,6 @@ func TestDecryptMLKEM_Truncated(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = DecryptMLKEM(make([]byte, 100), dk)
-	assert.Error(t, err)
-}
-
-// TestVerifyMLDSAJWT verifies the JWT sign+verify round-trip using the same
-// encoding as getTokenPQ.
-func TestVerifyMLDSAJWT(t *testing.T) {
-	seed := newTestSeed(t)
-
-	sk, err := DeriveMLDSAKey(seed)
-	require.NoError(t, err)
-
-	header := `{"alg":"MLDSA","typ":"JWT"}`
-	payload := `{"iss":"test"}`
-
-	b64Header := base64.RawURLEncoding.EncodeToString([]byte(header))
-	b64Payload := base64.RawURLEncoding.EncodeToString([]byte(payload))
-	signingInput := b64Header + "." + b64Payload
-
-	sig, err := sk.Sign(rand.Reader, []byte(signingInput), nil)
-	require.NoError(t, err)
-
-	token := signingInput + "." + base64.RawURLEncoding.EncodeToString(sig)
-
-	ok, err := VerifyMLDSAJWT(token, sk.PublicKey())
-	require.NoError(t, err)
-	assert.True(t, ok)
-}
-
-// TestVerifyMLDSAJWT_WrongKey verifies that a token signed with one key fails
-// verification against a different key.
-func TestVerifyMLDSAJWT_WrongKey(t *testing.T) {
-	seed1 := newTestSeed(t)
-	seed2 := newTestSeed(t)
-
-	sk1, err := DeriveMLDSAKey(seed1)
-	require.NoError(t, err)
-	sk2, err := DeriveMLDSAKey(seed2)
-	require.NoError(t, err)
-
-	header := `{"alg":"MLDSA","typ":"JWT"}`
-	payload := `{"iss":"test"}`
-	signingInput := base64.RawURLEncoding.EncodeToString([]byte(header)) + "." + base64.RawURLEncoding.EncodeToString([]byte(payload))
-
-	sig, err := sk1.Sign(rand.Reader, []byte(signingInput), nil)
-	require.NoError(t, err)
-
-	token := signingInput + "." + base64.RawURLEncoding.EncodeToString(sig)
-
-	ok, err := VerifyMLDSAJWT(token, sk2.PublicKey())
-	require.NoError(t, err)
-	assert.False(t, ok, "token signed with key1 must not verify with key2")
-}
-
-// TestVerifyMLDSAJWT_InvalidFormat verifies that a malformed token returns an error.
-func TestVerifyMLDSAJWT_InvalidFormat(t *testing.T) {
-	seed := newTestSeed(t)
-	sk, err := DeriveMLDSAKey(seed)
-	require.NoError(t, err)
-
-	_, err = VerifyMLDSAJWT("notavalidtoken", sk.PublicKey())
 	assert.Error(t, err)
 }
 
