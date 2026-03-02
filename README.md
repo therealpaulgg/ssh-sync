@@ -141,7 +141,7 @@ During setup, you'll be prompted to choose between using your own server or the 
 
 ### Uploading Keys
 
-**NOTE**: Uploading keys will overwrite your existing keys on the server. Later versions of ssh-sync may include a conflict resolution for upload, but it is currently not implemented.
+**NOTE**: Uploading keys will overwrite your existing keys on the server.
 
 To upload your SSH keys and configuration to the server, run:
 
@@ -181,6 +181,26 @@ If you simply want to download your keys to a temporary directory, and not inter
 ssh-sync download --safe-mode
 ```
 
+### Syncing Keys
+
+The `sync` command performs a bidirectional sync between your local `.ssh` directory and the server. It compares file modification timestamps and content — the newer version wins automatically, with no manual conflict resolution required.
+
+```shell
+ssh-sync sync
+```
+
+Files only on your machine are uploaded; files only on the server are downloaded. Files that are up to date on both sides are skipped. A summary is printed when complete:
+
+```
+Sync complete: 2 uploaded, 1 downloaded, 3 skipped.
+```
+
+Safe mode is also supported:
+
+```shell
+ssh-sync sync --safe-mode
+```
+
 ### Challenge Response
 
 If setting up a new machine with an existing account, use:
@@ -218,6 +238,42 @@ ssh-sync reset
 ```
 
 This command is useful if you're decommissioning a machine or wish to start fresh.
+
+### Rotating the Master Key
+
+To generate a new master key and re-encrypt all SSH keys stored on the server:
+
+```shell
+ssh-sync rotate-master-key
+```
+
+This is useful as a security hygiene measure or after a suspected compromise. The new master key is automatically distributed to all registered machines — each machine picks it up on its next download or sync.
+
+### Interactive Mode
+
+ssh-sync includes a TUI for managing your SSH keys interactively:
+
+```shell
+ssh-sync interactive
+```
+
+This launches a menu-driven interface where you can view and manage your stored SSH keys.
+
+### Migrating to Post-Quantum Cryptography
+
+By default, new machines are set up with post-quantum cryptography (ML-DSA-65 for authentication, ML-KEM-768 for key encapsulation). If your machine was set up with classical ECDSA, you can upgrade it:
+
+```shell
+ssh-sync migrate
+```
+
+This migrates your machine's keypair to post-quantum algorithms. Your encrypted SSH keys on the server remain unchanged (AES-256-GCM is already quantum-resistant — only the key wrapping is upgraded).
+
+To set up a new machine with classical ECDSA instead of post-quantum, use:
+
+```shell
+ssh-sync setup --classic
+```
 
 By following these steps, you can seamlessly sync and manage your SSH keys across all your machines with SSH-Sync.
 
@@ -316,7 +372,7 @@ For a deep dive into the technicalities of ssh-sync, including its security mode
 ## Why Choose ssh-sync?
 
 - **Simplify SSH Key Management:** Easily sync your SSH keys and configurations across all your devices.
-- **Enhanced Security:** ssh-sync uses advanced cryptographic techniques to ensure your SSH keys are securely transmitted and stored.
+- **Enhanced Security:** ssh-sync uses post-quantum cryptography (ML-DSA-65 + ML-KEM-768) by default, with AES-256-GCM for data encryption, ensuring your SSH keys are securely transmitted and stored.
 - **Effortless Setup:** With support for Windows, macOS, and Linux, setting up ssh-sync is straightforward, regardless of your operating system.
 
 ## Contributing
