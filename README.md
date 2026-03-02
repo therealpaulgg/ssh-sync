@@ -5,6 +5,10 @@ ssh-sync is a powerful CLI tool designed to simplify the way you manage and sync
 
 [![release](https://github.com/therealpaulgg/ssh-sync/actions/workflows/release.yml/badge.svg)](https://github.com/therealpaulgg/ssh-sync/actions/workflows/release.yml)
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=therealpaulgg/ssh-sync&type=date&legend=top-left)](https://www.star-history.com/#therealpaulgg/ssh-sync&type=date&legend=top-left)
+
 ## Quick Start
 
 ### Installation
