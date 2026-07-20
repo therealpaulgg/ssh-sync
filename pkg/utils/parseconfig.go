@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -13,19 +14,30 @@ import (
 )
 
 func ParseConfig() ([]models.Host, error) {
-	// parse the ssh config file and return a list of hosts
-	// the ssh config file is located at ~/.ssh/config
-	user, err := user.Current()
+	u, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
-	p := filepath.Join(user.HomeDir, ".ssh", "config")
+	p := filepath.Join(u.HomeDir, ".ssh", "config")
 	file, err := os.Open(p)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
+	return ParseConfigFromReader(file)
+}
+
+func ParseConfigFromString(s string) ([]models.Host, error) {
+	return ParseConfigFromReader(strings.NewReader(s))
+}
+
+func ParseConfigFromReader(r io.Reader) ([]models.Host, error) {
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
 	var hosts []models.Host
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(r)
 	var currentHost *models.Host
 	re := regexp.MustCompile(`^\s+(\w+)[ =](.+)$`)
 	for scanner.Scan() {
@@ -42,10 +54,10 @@ func ParseConfig() ([]models.Host, error) {
 			key := re.FindStringSubmatch(line)[1]
 			value := re.FindStringSubmatch(line)[2]
 			if strings.ToLower(key) == "identityfile" {
-				homeDir := user.HomeDir
+				homeDir := u.HomeDir
 				if runtime.GOOS == "windows" {
 					value = strings.ToLower(value)
-					homeDir = strings.ToLower(user.HomeDir)
+					homeDir = strings.ToLower(u.HomeDir)
 				}
 				identityFile := strings.TrimPrefix(value, homeDir)
 				normalizedIdentityFilePath := filepath.ToSlash(identityFile)
@@ -53,7 +65,6 @@ func ParseConfig() ([]models.Host, error) {
 			} else {
 				currentHost.Values[key] = append(currentHost.Values[key], value)
 			}
-
 		}
 	}
 	if currentHost != nil {

@@ -12,7 +12,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	github.com/samber/lo v1.37.0
 	github.com/stretchr/testify v1.9.0
-	github.com/therealpaulgg/ssh-sync-common v0.0.3
+	github.com/therealpaulgg/ssh-sync-common v0.0.4
 	github.com/urfave/cli/v2 v2.23.7
 )
 

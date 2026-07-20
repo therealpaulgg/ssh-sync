@@ -14,6 +14,7 @@ type MainMenu struct {
 func NewMainMenu(b baseState) *MainMenu {
 	items := []list.Item{
 		item{title: "Manage SSH Keys", desc: "View and manage your SSH keys"},
+		item{title: "Manage SSH Config", desc: "View, add, edit, and delete SSH config entries"},
 	}
 	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Main Menu"
@@ -46,6 +47,14 @@ func (m *MainMenu) Update(msg tea.Msg) (State, tea.Cmd) {
 				sshKeyManager.height = m.height
 				sshKeyManager.width = m.width
 				return sshKeyManager, nil
+			case "Manage SSH Config":
+				configManager, err := NewSSHConfigManager(m.baseState)
+				if err != nil {
+					return NewErrorState(m.baseState, err), nil
+				}
+				configManager.height = m.height
+				configManager.width = m.width
+				return configManager, nil
 			}
 		}
 	}
