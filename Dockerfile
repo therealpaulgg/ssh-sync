@@ -1,4 +1,4 @@
-FROM golang
+FROM golang:1.27
 RUN mkdir /app
 COPY ./pkg/ /app/pkg
 COPY . /app

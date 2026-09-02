@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"crypto/mldsa"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -9,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"filippo.io/mldsa"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
