@@ -1,10 +1,9 @@
 package utils
 
 import (
+	"crypto/mldsa"
 	"crypto/mlkem"
 	"fmt"
-
-	"filippo.io/mldsa"
 )
 
 // MasterSeedSize is the size in bytes of the PQ master seed.

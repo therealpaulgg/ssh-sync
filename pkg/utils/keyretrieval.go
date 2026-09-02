@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"crypto/mldsa"
 	"crypto/mlkem"
 	"encoding/pem"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"filippo.io/mldsa"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwe"
 	"github.com/lestrrat-go/jwx/v2/jwk"
