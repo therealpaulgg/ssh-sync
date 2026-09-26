@@ -97,7 +97,10 @@ func Sync(c *cli.Context) error {
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	mergedKnownHosts, nLocalOnlyKnownHosts := mergeKnownHosts(localKnownHosts, serverData.KnownHosts)
+	mergedKnownHosts, nLocalOnlyKnownHosts, conflictKnownHosts := mergeKnownHosts(localKnownHosts, serverData.KnownHosts)
+	for _, h := range conflictKnownHosts {
+		fmt.Printf("Warning: local known_hosts entry for %s differs from the server; keeping the server version.\n", h)
+	}
 
 	serverMap := make(map[string]dto.KeyDto, len(serverData.Keys))
 	for _, key := range serverData.Keys {
@@ -126,8 +129,8 @@ func Sync(c *cli.Context) error {
 				return err
 			}
 		}
-		// The server replaces ssh_config wholesale, so send the merged config:
-		// every server host plus hosts that only exist locally.
+		// ssh_config is required by the server, which upserts it per host.
+		// Send the merged config so local-only hosts reach the server.
 		sshConfigJSON, err := json.Marshal(mergedHosts)
 		if err != nil {
 			return err
@@ -201,27 +204,36 @@ func Sync(c *cli.Context) error {
 	return nil
 }
 
-// mergeKnownHosts returns the union of server and local known_hosts entries
-// (server entries first) and how many entries existed only locally.
-func mergeKnownHosts(local []models.KnownHostEntry, server []dto.KnownHostDto) ([]models.KnownHostEntry, int) {
-	seen := make(map[models.KnownHostEntry]struct{}, len(server)+len(local))
-	var merged []models.KnownHostEntry
+// mergeKnownHosts merges local and server known_hosts entries keyed by
+// (host pattern, key type), matching the server's uniqueness constraint.
+// Server entries come first and win on conflict; entries only present locally
+// are appended. Returns the merged list, how many entries existed only
+// locally, and the host patterns whose local key differs from the server's.
+func mergeKnownHosts(local []models.KnownHostEntry, server []dto.KnownHostDto) (merged []models.KnownHostEntry, nLocalOnly int, conflicts []string) {
+	type entryKey struct{ hostPattern, keyType string }
+	seen := make(map[entryKey]models.KnownHostEntry, len(server)+len(local))
 	for _, kh := range server {
 		e := models.KnownHostEntry{HostPattern: kh.HostPattern, KeyType: kh.KeyType, KeyData: kh.KeyData, Marker: kh.Marker}
-		if _, dup := seen[e]; !dup {
-			seen[e] = struct{}{}
+		k := entryKey{e.HostPattern, e.KeyType}
+		if _, dup := seen[k]; !dup {
+			seen[k] = e
 			merged = append(merged, e)
 		}
 	}
-	nLocalOnly := 0
 	for _, e := range local {
-		if _, dup := seen[e]; !dup {
-			seen[e] = struct{}{}
+		k := entryKey{e.HostPattern, e.KeyType}
+		s, exists := seen[k]
+		if !exists {
+			seen[k] = e
 			merged = append(merged, e)
 			nLocalOnly++
+			continue
+		}
+		if s != e {
+			conflicts = append(conflicts, e.HostPattern)
 		}
 	}
-	return merged, nLocalOnly
+	return merged, nLocalOnly, conflicts
 }
 
 // mergeSshConfig merges local and server ssh config by Host name. Server hosts
