@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime/multipart"
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/samber/lo"
@@ -82,6 +84,24 @@ func Sync(c *cli.Context) error {
 		return err
 	}
 
+	localHosts, err := utils.ParseConfig()
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	mergedHosts, localOnlyHosts, conflictHosts := mergeSshConfig(localHosts, serverData.SshConfig)
+	for _, h := range conflictHosts {
+		fmt.Printf("Warning: local config for Host %s differs from the server; keeping the server version.\n", h)
+	}
+
+	localKnownHosts, err := utils.ParseKnownHosts(filepath.Join(p, "known_hosts"))
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	mergedKnownHosts, nLocalOnlyKnownHosts, conflictKnownHosts := mergeKnownHosts(localKnownHosts, serverData.KnownHosts)
+	for _, h := range conflictKnownHosts {
+		fmt.Printf("Warning: local known_hosts entry for %s differs from the server; keeping the server version.\n", h)
+	}
+
 	serverMap := make(map[string]dto.KeyDto, len(serverData.Keys))
 	for _, key := range serverData.Keys {
 		serverMap[key.Filename] = key
@@ -97,7 +117,7 @@ func Sync(c *cli.Context) error {
 	}
 
 	// Apply uploads
-	if len(toUpload) > 0 {
+	if len(toUpload) > 0 || len(localOnlyHosts) > 0 || nLocalOnlyKnownHosts > 0 {
 		var multipartBody bytes.Buffer
 		multipartWriter := multipart.NewWriter(&multipartBody)
 		for _, f := range toUpload {
@@ -109,9 +129,9 @@ func Sync(c *cli.Context) error {
 				return err
 			}
 		}
-		// ssh_config is required by the server. Echo back the server's current
-		// config so the field is always present without overwriting remote changes.
-		sshConfigJSON, err := json.Marshal(serverData.SshConfig)
+		// ssh_config is required by the server, which upserts it per host.
+		// Send the merged config so local-only hosts reach the server.
+		sshConfigJSON, err := json.Marshal(mergedHosts)
 		if err != nil {
 			return err
 		}
@@ -122,6 +142,26 @@ func Sync(c *cli.Context) error {
 		if _, err := cfgField.Write(sshConfigJSON); err != nil {
 			return err
 		}
+		if nLocalOnlyKnownHosts > 0 {
+			khJSON, err := json.Marshal(lo.Map(mergedKnownHosts, func(e models.KnownHostEntry, _ int) dto.KnownHostDto {
+				return dto.KnownHostDto{
+					HostPattern: e.HostPattern,
+					KeyType:     e.KeyType,
+					KeyData:     e.KeyData,
+					Marker:      e.Marker,
+				}
+			}))
+			if err != nil {
+				return err
+			}
+			khField, err := multipartWriter.CreateFormField("known_hosts")
+			if err != nil {
+				return err
+			}
+			if _, err := khField.Write(khJSON); err != nil {
+				return err
+			}
+		}
 		multipartWriter.Close()
 
 		client := retrieval.NewRetrievalClient()
@@ -130,27 +170,13 @@ func Sync(c *cli.Context) error {
 		}
 	}
 
-	// Write config and known_hosts from server
-	if err := utils.WriteConfig(lo.Map(serverData.SshConfig, func(cfg dto.SshConfigDto, _ int) models.Host {
-		return models.Host{
-			Host:          cfg.Host,
-			Values:        cfg.Values,
-			IdentityFiles: cfg.IdentityFiles,
-		}
-	}), downloadDir); err != nil {
+	// Write merged config and known_hosts
+	if err := utils.WriteConfig(mergedHosts, downloadDir); err != nil {
 		return err
 	}
 
-	if len(serverData.KnownHosts) > 0 {
-		entries := lo.Map(serverData.KnownHosts, func(kh dto.KnownHostDto, _ int) models.KnownHostEntry {
-			return models.KnownHostEntry{
-				HostPattern: kh.HostPattern,
-				KeyType:     kh.KeyType,
-				KeyData:     kh.KeyData,
-				Marker:      kh.Marker,
-			}
-		})
-		if err := utils.WriteKnownHosts(entries, downloadDir); err != nil {
+	if len(mergedKnownHosts) > 0 {
+		if err := utils.WriteKnownHosts(mergedKnownHosts, downloadDir); err != nil {
 			return err
 		}
 	}
@@ -169,7 +195,71 @@ func Sync(c *cli.Context) error {
 	}
 	fmt.Printf("Sync complete: %d uploaded, %d downloaded, %d skipped.\n",
 		nUploaded, nDownloaded, nSkipped)
+	if len(localOnlyHosts) > 0 {
+		fmt.Printf("Uploaded %d new config host(s).\n", len(localOnlyHosts))
+	}
+	if nLocalOnlyKnownHosts > 0 {
+		fmt.Printf("Uploaded %d new known_hosts entr(ies).\n", nLocalOnlyKnownHosts)
+	}
 	return nil
+}
+
+// mergeKnownHosts merges local and server known_hosts entries keyed by
+// (host pattern, key type), matching the server's uniqueness constraint.
+// Server entries come first and win on conflict; entries only present locally
+// are appended. Returns the merged list, how many entries existed only
+// locally, and the host patterns whose local key differs from the server's.
+func mergeKnownHosts(local []models.KnownHostEntry, server []dto.KnownHostDto) (merged []models.KnownHostEntry, nLocalOnly int, conflicts []string) {
+	type entryKey struct{ hostPattern, keyType string }
+	seen := make(map[entryKey]models.KnownHostEntry, len(server)+len(local))
+	for _, kh := range server {
+		e := models.KnownHostEntry{HostPattern: kh.HostPattern, KeyType: kh.KeyType, KeyData: kh.KeyData, Marker: kh.Marker}
+		k := entryKey{e.HostPattern, e.KeyType}
+		if _, dup := seen[k]; !dup {
+			seen[k] = e
+			merged = append(merged, e)
+		}
+	}
+	for _, e := range local {
+		k := entryKey{e.HostPattern, e.KeyType}
+		s, exists := seen[k]
+		if !exists {
+			seen[k] = e
+			merged = append(merged, e)
+			nLocalOnly++
+			continue
+		}
+		if s != e {
+			conflicts = append(conflicts, e.HostPattern)
+		}
+	}
+	return merged, nLocalOnly, conflicts
+}
+
+// mergeSshConfig merges local and server ssh config by Host name. Server hosts
+// come first and win on conflict; hosts only present locally are appended.
+// Returns the merged list, the names of local-only hosts, and the names of
+// hosts whose local content differs from the server's.
+func mergeSshConfig(local []models.Host, server []dto.SshConfigDto) (merged []models.Host, localOnly, conflicts []string) {
+	serverByHost := make(map[string]models.Host, len(server))
+	for _, cfg := range server {
+		h := models.Host{Host: cfg.Host, Values: cfg.Values, IdentityFiles: cfg.IdentityFiles}
+		serverByHost[cfg.Host] = h
+		merged = append(merged, h)
+	}
+	for _, h := range local {
+		s, ok := serverByHost[h.Host]
+		if !ok {
+			merged = append(merged, h)
+			localOnly = append(localOnly, h.Host)
+			serverByHost[h.Host] = h // guard against duplicate local Host blocks
+			continue
+		}
+		if !slices.Equal(h.IdentityFiles, s.IdentityFiles) || !maps.EqualFunc(h.Values, s.Values, slices.Equal[[]string]) {
+			conflicts = append(conflicts, h.Host)
+		}
+	}
+	return merged, localOnly, conflicts
 }
 
 // buildSyncDecisions compares the local SSH directory against the server's key list and
