@@ -8,6 +8,12 @@ jobs:
   update-winget-manifest:
     runs-on: windows-latest
     steps:
+      # The action's built-in sync has not been reliable; a stale fork makes
+      # the manifest submission fail. Sync it explicitly first.
+      - name: Sync winget-pkgs fork
+        run: gh repo sync ${{ github.repository_owner }}/winget-pkgs --branch master
+        env:
+          GH_TOKEN: ${{ secrets.ACCESS_TOKEN_CLASSIC }}
       - uses: vedantmgoyal2009/winget-releaser@main 
         with:
           identifier: therealpaulgg.ssh-sync
